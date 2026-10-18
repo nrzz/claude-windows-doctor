@@ -4,6 +4,8 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `explain --list <part>` filters the list of finding ids and titles; text and JSON show every matching id, and an unmatched part exits 1 with the full id list and nearest ids in JSON.
+
 ## [1.2.1] - 2026-10-18
 
 - `explain` tells an ambiguous part from an unknown id: a part that several ids contain is refused with every id that contains it, in page order (`explain git-bash` names the four and says "Give one of them"), in text and in JSON (`ids` holds those ids and `near` is empty); an unknown id keeps its message with the nearest ids. Both exit 1.

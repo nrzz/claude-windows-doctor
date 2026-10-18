@@ -26,7 +26,7 @@ Read (they change nothing):
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
            because Claude Code drops a skill whose command fails
-  explain  [--list] <finding-id>
+  explain  [--list [<part>] | <finding-id>]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
 
@@ -95,8 +95,7 @@ export function parseArgs(argv) {
   if (!spec) throw new UsageError(`unknown command "${o.command}"`);
   for (const key of o.given) if (key !== "help" && key !== "version" && !spec.options.includes(key)) throw new UsageError(`${o.command} does not take --${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`);
   const rest = positional.slice(1);
-  if (o.command === "explain" && o.list && rest.length) throw new UsageError("explain takes --list or one finding id, not both");
-  if (rest.length > spec.positional) throw new UsageError(`${o.command} takes ${spec.positional === 0 ? "no name" : "one finding id"}, not "${rest.join(" ")}"`);
+  if (rest.length > spec.positional) throw new UsageError(`${o.command} takes ${spec.positional === 0 ? "no name" : o.command === "explain" && o.list ? "one part" : "one finding id"}, not "${rest.join(" ")}"`);
   if (o.command === "explain" && !o.list && rest.length === 0) throw new UsageError(`explain needs a finding id or --list (${IDS.join(", ")})`);
   o.id = rest[0] || null;
   if (o.command === "check" && o.claude !== undefined && !o.live) throw new UsageError("--claude is for --live: it names the claude to run");
@@ -142,7 +141,19 @@ export async function main(argv, io = {}) {
     if (o.command === "explain") {
       if (o.list) {
         const pages = listPages();
-        emit(explainListJson(pages), explainListText(pages));
+        if (!o.id) {
+          emit(explainListJson(pages), explainListText(pages));
+          return 0;
+        }
+        const ids = idsContaining(o.id);
+        if (!ids.length) {
+          const refused = `no finding id contains "${o.id}"`;
+          if (o.json) stdout.write(`${JSON.stringify({ ok: false, refused, ids: IDS, near: nearIds(o.id) }, null, 2)}\n`);
+          else stderr.write(`claude-windows-doctor: ${refused}.\n`);
+          return 1;
+        }
+        const matches = pages.filter((page) => ids.includes(page.id));
+        emit(explainListJson(matches), explainListText(matches));
         return 0;
       }
       const page = pageFor(o.id);
