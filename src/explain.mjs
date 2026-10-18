@@ -240,12 +240,18 @@ export function listPages() {
   return PAGES.map(({ id, title }) => ({ id, title }));
 }
 
+/** Every id containing a nonempty part, in page order. */
+export function idsContaining(part) {
+  const key = String(part).trim().toLowerCase();
+  return IDS.filter((id) => key && id.includes(key));
+}
+
 /** A page by exact id or a unique part of one, with each line of `does` split into its mark and text, or null. */
 export function pageFor(id) {
   const key = String(id).trim().toLowerCase();
   const exact = PAGES.find((x) => x.id === key);
-  const partial = exact ? [] : PAGES.filter((x) => key && x.id.includes(key));
-  const p = exact ?? (partial.length === 1 ? partial[0] : null);
+  const partial = exact ? [] : idsContaining(key);
+  const p = exact ?? (partial.length === 1 ? PAGES.find((x) => x.id === partial[0]) : null);
   if (!p) return null;
   return { ...p, does: p.does.map((line) => { const m = /^([VDN]): (.*)$/s.exec(line); return m ? { source: MARK[m[1]], text: m[2] } : { source: null, text: line }; }) };
 }

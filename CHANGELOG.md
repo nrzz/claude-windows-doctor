@@ -4,6 +4,8 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `explain` distinguishes an ambiguous part from an unknown id: it lists every matching id in page order, in text and JSON, instead of suggesting only the nearest ids. Both refusals still exit 1.
+
 ## [1.2.0] - 2026-10-18
 
 - `explain` takes a part of a finding id when exactly one id contains it: `explain long` prints `long-paths`, `explain distro` prints `wsl-no-distro`. A whole id still wins, and a part that several ids contain is refused like an unknown id, with the nearest ids (`explain git-bash` names the four). `--json` is unchanged: the page's `id` is the full id.

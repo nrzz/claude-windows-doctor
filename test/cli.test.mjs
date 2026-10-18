@@ -180,9 +180,9 @@ test("explain: a page, the list as text and JSON, an id that is not one (exit 1,
   const listJson = (await run(["explain", "--list", "--json"])).json();
   assert.equal(listJson.ok, true);
   assert.deepEqual(listJson.findings.map((p) => p.id), IDS);
-  const u = await run(["explain", "git-bash"]);
+  const u = await run(["explain", "git-bash-missing"]);
   assert.equal(u.code, 1);
-  assert.match(u.err, /no finding called "git-bash"\. Did you mean git-bash-not-found, git-bash-path-ignored/);
+  assert.match(u.err, /no finding called "git-bash-missing"\. Did you mean git-bash-not-found, git-bash-path-ignored/);
   const uj = (await run(["explain", "nope", "--json"])).json();
   assert.deepEqual([uj.ok, uj.refused, uj.near], [false, 'no finding called "nope"', []]);
   assert.equal(uj.ids.length >= 27, true);
@@ -192,6 +192,27 @@ test("explain: a page, the list as text and JSON, an id that is not one (exit 1,
   const both = await run(["explain", "no-shell-tool", "--list", "--json"]);
   assert.equal(both.code, 2);
   assert.deepEqual(both.json(), { ok: false, error: "explain takes --list or one finding id, not both" });
+});
+
+test("explain: an ambiguous part names every matching id in order, in text and JSON", async () => {
+  const ids = ["git-bash-not-found", "git-bash-path-ignored", "git-bash-path-project-settings", "git-bash-broken"];
+  for (const part of ["git-bash", " GIT-BASH "]) {
+    const refused = `"${part}" is a part of 4 finding ids`;
+    const text = await run(["explain", part]);
+    assert.equal(text.code, 1);
+    assert.equal(text.out, "");
+    assert.equal(text.err, `claude-windows-doctor: ${refused}: ${ids.join(", ")}. Give one of them.\n`);
+    const json = await run(["explain", part, "--json"]);
+    assert.equal(json.code, 1);
+    assert.equal(json.err, "");
+    assert.deepEqual(json.json(), { ok: false, refused, ids, near: [] });
+  }
+  const many = IDS.filter((id) => id.includes("a"));
+  assert.ok(many.length > 5);
+  assert.deepEqual((await run(["explain", "a", "--json"])).json().ids, many);
+  const exact = await run(["explain", "autocrlf", "--json"]);
+  assert.equal(exact.code, 0);
+  assert.equal(exact.json().id, "autocrlf");
 });
 
 test("fix and undo through the command line: the report, the exit codes, the JSON, and the refusal off Windows", async () => {

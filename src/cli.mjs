@@ -8,7 +8,7 @@ import { collectWindows, collectWsl, kindOf, notApplicable } from "./check.mjs";
 import { versionOf } from "./binaries.mjs";
 import { proveShell } from "./live.mjs";
 import { runFix, runUndo } from "./fix.mjs";
-import { IDS, listPages, nearIds, pageFor } from "./explain.mjs";
+import { IDS, idsContaining, listPages, nearIds, pageFor } from "./explain.mjs";
 import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListText, explainText, fixJson, fixText } from "./report.mjs";
 
 export const HELP = `Usage: claude-windows-doctor <command> [options]
@@ -147,6 +147,13 @@ export async function main(argv, io = {}) {
       }
       const page = pageFor(o.id);
       if (!page) {
+        const ids = idsContaining(o.id);
+        if (ids.length > 1) {
+          const refused = `"${o.id}" is a part of ${ids.length} finding ids`;
+          if (o.json) stdout.write(`${JSON.stringify({ ok: false, refused, ids, near: [] }, null, 2)}\n`);
+          else stderr.write(`claude-windows-doctor: ${refused}: ${ids.join(", ")}. Give one of them.\n`);
+          return 1;
+        }
         const near = nearIds(o.id);
         if (o.json) stdout.write(`${JSON.stringify({ ok: false, refused: `no finding called "${o.id}"`, ids: IDS, near }, null, 2)}\n`);
         else stderr.write(`claude-windows-doctor: no finding called "${o.id}".${near.length ? ` Did you mean ${near.join(", ")}?` : ""}\nThe ids: ${IDS.join(", ")}\n`);
