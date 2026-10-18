@@ -4,7 +4,10 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
-- `explain` distinguishes an ambiguous part from an unknown id: it lists every matching id in page order, in text and JSON, instead of suggesting only the nearest ids. Both refusals still exit 1.
+## [1.2.1] - 2026-10-18
+
+- `explain` tells an ambiguous part from an unknown id: a part that several ids contain is refused with every id that contains it, in page order (`explain git-bash` names the four and says "Give one of them"), in text and in JSON (`ids` holds those ids and `near` is empty); an unknown id keeps its message with the nearest ids. Both exit 1.
+- Contributed by [@Plastic-time](https://github.com/Plastic-time) in [#6](https://github.com/nrzz/claude-windows-doctor/pull/6), for the good first issue [#5](https://github.com/nrzz/claude-windows-doctor/issues/5).
 
 ## [1.2.0] - 2026-10-18
 
@@ -28,8 +31,9 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.2.1]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.2.1
 [1.2.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.2.1...HEAD
