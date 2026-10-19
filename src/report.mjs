@@ -123,7 +123,11 @@ function liveText(live) {
 
 function findingsText(f) {
   const out = [];
-  if (!f.findings.length) { out.push("No findings."); return out; }
+  if (!f.findings.length) {
+    out.push("No findings.");
+    if (f.ignored && f.ignored.length) out.push(`Ignored: ${f.ignored.join(", ")} (--ignore).`);
+    return out;
+  }
   out.push("Findings");
   for (const x of f.findings) {
     out.push(`  ${pad(x.severity, 7)} ${x.id}`);
@@ -134,6 +138,7 @@ function findingsText(f) {
   }
   out.push("");
   out.push(`${plural(f.counts.error, "error")}, ${plural(f.counts.warning, "warning")}, ${plural(f.counts.note, "note")}`);
+  if (f.ignored && f.ignored.length) out.push(`Ignored: ${f.ignored.join(", ")} (--ignore).`);
   return out;
 }
 
@@ -209,7 +214,7 @@ export function checkJson(f) {
   if (f.applicable === false) return { ok: true, applicable: false, platform: f.platform, kind: f.kind, system: f.system, message: NOTHING(f.platform), findings: [], counts: f.counts };
   const base = { ok: f.counts.error + f.counts.warning === 0, applicable: true, platform: f.platform, kind: f.kind, project: f.project, system: f.system };
   if (f.kind === "wsl") {
-    return { ...base, binaries: binariesJson(f.binaries), locations: f.locations, wslInherits: f.wslInherits, findings: f.findings.map(findingJson), counts: f.counts };
+    return { ...base, binaries: binariesJson(f.binaries), locations: f.locations, wslInherits: f.wslInherits, findings: f.findings.map(findingJson), ...(f.ignored && f.ignored.length ? { ignored: f.ignored } : {}), counts: f.counts };
   }
   const s = f.shell;
   const variable = (v) => ({ value: v.value, source: v.source, ignored: (v.ignored || []).map((i) => ({ scope: i.scope, file: i.display, value: i.value })) });
@@ -238,6 +243,7 @@ export function checkJson(f) {
     wsl: { available: f.wsl.available, distros: f.wsl.distros, defaultName: f.wsl.defaultName, workable: f.wsl.workable.map((d) => d.name), error: f.wsl.error },
     ...(f.live ? { live: liveJson(f.live) } : {}),
     findings: f.findings.map(findingJson),
+    ...(f.ignored && f.ignored.length ? { ignored: f.ignored } : {}),
     counts: f.counts,
   };
 }

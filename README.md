@@ -59,7 +59,7 @@ The examples are real runs on Windows 11 in a throwaway folder: an empty Claude 
 Usage: claude-windows-doctor <command> [options]
 
 Read (they change nothing):
-  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>]
+  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>] [--ignore <id,...>]
            on Windows: the shell tools Claude Code gives the model (the Bash tool when it finds Git
            Bash, the PowerShell tool) and why, in the order Claude Code looks; every claude on PATH
            and in the places the installers use, with its version and which one runs first; Node and
@@ -70,7 +70,8 @@ Read (they change nothing):
            choice with the real claude through a fake API on 127.0.0.1 (no token is spent), using
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings, or --max <n>); it
-           always exits 0, because Claude Code drops a skill whose command fails
+           always exits 0, because Claude Code drops a skill whose command fails; --ignore <id,...>
+           leaves the named findings out of the report, the exit code and the JSON
   explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
@@ -201,7 +202,7 @@ The shell the model gets
 
 (The tool starts the Git Bash that Claude Code would take with `-c "exit 0"`, to say whether it starts. When the variable is set, the PowerShell tool is decided by the account: Claude Code's documentation says on for claude.ai and Console accounts, and off for Bedrock, Vertex and Foundry. The real binary behind a fake API has no account, so there it was off; `check` says so instead of guessing.)
 
-`--markdown` is the short report that the skill hands to Claude: a header, the system, the shell in one line, and the errors and warnings, one line each with the fix, at most 12 of them. It always exits 0, because Claude Code drops a skill whose command fails (put to the binary: a command that exits 1 never reached the model, and one that exits 0 did). `--max <n>` sets how many errors and warnings the report holds (default 12, minimum 1, whole numbers only); `--max` without `--markdown` is a usage error.
+`--markdown` is the short report that the skill hands to Claude: a header, the system, the shell in one line, and the errors and warnings, one line each with the fix, at most 12 of them. It always exits 0, because Claude Code drops a skill whose command fails (put to the binary: a command that exits 1 never reached the model, and one that exits 0 did). `--max <n>` sets how many errors and warnings the report holds (default 12, minimum 1, whole numbers only); `--max` without `--markdown` is a usage error. `--ignore <id,...>` leaves the named findings out of the report, the exit code and the JSON (comma-separated, case-insensitive).
 
 ```text
 $ claude-windows-doctor check --markdown
@@ -352,7 +353,7 @@ The issue threads
 `--json` prints one document. Optional fields are marked `?`; `//` starts a comment.
 
 ```text
-check      { ok, applicable, platform, kind, project, system, shell, binaries, settings, machine, userEnv, wsl, live?, findings, counts }    // Windows
+check      { ok, applicable, platform, kind, project, system, shell, binaries, settings, machine, userEnv, wsl, live?, findings, ignored?, counts }    // Windows
              system      { os, release, arch }
              shell       { tools { Bash, PowerShell }, fatal, gitBash, powershell, deny { Bash [ { rule, scope, display } ], PowerShell [] }, defaultShell [ { scope, display, value, valid } ], why [] }    // deny holds the whole-tool rules
              gitBash     { found, path, how, variable { value, source, ignored [ { scope, file, value } ] }, variableState, trail [ { step, state, value, source, hint, path, exists, lines, skipped [ { line, reason } ], chosen, derived } ], starts { checked, ok, error }, onMachine [ { path, via } ] }
@@ -366,7 +367,7 @@ check      { ok, applicable, platform, kind, project, system, shell, binaries, s
              findings    [ { id, severity, message, effect, fix } ]
              counts      { error, warning, note }
 check      { ok, applicable, platform, kind, system, message, findings, counts }    // Linux and macOS: nothing to check
-check      { ok, applicable, platform, kind, project, system { os, release, arch, wsl }, binaries, locations { configDir, configSource, configOnWindows, project, projectOnWindows }, wslInherits, findings, counts }    // inside WSL
+check      { ok, applicable, platform, kind, project, system { os, release, arch, wsl }, binaries, locations { configDir, configSource, configOnWindows, project, projectOnWindows }, wslInherits, findings, ignored?, counts }    // inside WSL
 fix        { ok, refused, reason, dryRun, action, name, key, layer, value, previous { value, type }, via, record, notes [] }    // previous is null when nothing was there; action is set or nothing, and null when refused
 undo       { ok, refused, reason, dryRun, action, name, key, layer, value, previous { value?, type? }, via, record, notes [] }    // action is restore, remove, forget or nothing
 explain    { ok, id, title, means, does [ { source, text } ], fix [], issues [ { number, title, url } ] }

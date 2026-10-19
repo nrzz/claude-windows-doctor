@@ -25,6 +25,9 @@ test("parseArgs: every command and option, and every usage error with its words"
   ok(["check", "--markdown", "--project=D:\\p"], { markdown: true, project: "D:\\p" });
   ok(["check", "--markdown", "--max", "3"], { command: "check", markdown: true, max: 3 });
   ok(["check", "--markdown", "--max=40"], { command: "check", markdown: true, max: 40 });
+  ok(["check", "--ignore", "git-bash-not-found"], { command: "check", ignore: ["git-bash-not-found"] });
+  ok(["check", "--ignore=GIT-BASH-NOT-FOUND, no-shell-tool "], { command: "check", ignore: ["git-bash-not-found", "no-shell-tool"] });
+  ok(["check", "--ignore", "git-bash-not-found,git-bash-not-found"], { command: "check", ignore: ["git-bash-not-found"] });
   ok(["explain", "git-bash-not-found", "--json"], { command: "explain", id: "git-bash-not-found", json: true });
   ok(["explain", "--list"], { command: "explain", id: null, list: true });
   ok(["explain", "--list", "git-bash"], { command: "explain", id: "git-bash", list: true });
@@ -74,6 +77,15 @@ test("parseArgs: every command and option, and every usage error with its words"
   bad(["explain", "git-bash-not-found", "--max", "3"], /explain does not take --max/);
   bad(["fix", "--git-bash", "--max", "3"], /fix does not take --max/);
   bad(["undo", "--max", "3"], /undo does not take --max/);
+  bad(["check", "--ignore"], /--ignore needs a value/);
+  bad(["check", "--ignore", ""], /--ignore needs at least one finding id/);
+  bad(["check", "--ignore", "   "], /--ignore needs at least one finding id/);
+  bad(["check", "--ignore", "nope"], /--ignore: no finding called "nope"/);
+  bad(["check", "--ignore", "no-shell-tol"], /--ignore: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
+  bad(["check", "--ignore", "git-bash-not-found", "--ignore", "no-shell-tool"], /--ignore can only be given once/);
+  bad(["explain", "git-bash-not-found", "--ignore", "no-shell-tool"], /explain does not take --ignore/);
+  bad(["fix", "--git-bash", "--ignore", "no-shell-tool"], /fix does not take --ignore/);
+  bad(["undo", "--ignore", "no-shell-tool"], /undo does not take --ignore/);
 });
 
 test("--help is the usage block, --version the version, and both exit 0; a usage error exits 2 with a line on stderr, or a JSON document with --json", async () => {
@@ -153,6 +165,44 @@ test("check --markdown is capped: at most 12 findings and 500 characters a line,
   const lines40 = r40.out.trimEnd().split("\n");
   assert.equal(lines40.filter((l) => l.startsWith("- WARNING")).length, 20);
   assert.ok(!lines40.some((l) => l.includes("and") && l.includes("more")));
+});
+
+test("check --ignore leaves named findings out of text, json, markdown and exit code", async () => {
+  const bad = () => winMachine({ noGit: true, files: E_GIT, registry: { "HKLM\\SOFTWARE\\GitForWindows": { InstallPath: ["REG_SZ", "E:\\Das\\Git"] } }, env: { Path: "C:\\Windows\\System32;C:\\Windows", CLAUDE_CODE_USE_POWERSHELL_TOOL: "0" } });
+
+  const one = await run(["check", "--ignore", "no-shell-tool"], { sys: bad() });
+  assert.equal(one.code, 1);
+  assert.doesNotMatch(one.out, /\n {2}error {3}no-shell-tool\n/);
+  assert.match(one.out, /\n {2}warning {1}claude-not-on-path\n/);
+  assert.match(one.out, /0 errors, 1 warning, 2 notes\nIgnored: no-shell-tool \(--ignore\)\.\n$/);
+
+  const all = await run(["check", "--ignore", "no-shell-tool,claude-not-on-path"], { sys: bad() });
+  assert.equal(all.code, 0);
+  assert.doesNotMatch(all.out, /\n {2}error {3}no-shell-tool\n/);
+  assert.doesNotMatch(all.out, /\n {2}warning {1}claude-not-on-path\n/);
+  assert.match(all.out, /0 errors, 0 warnings, 2 notes\nIgnored: no-shell-tool, claude-not-on-path \(--ignore\)\.\n$/);
+
+  const j = (await run(["check", "--ignore", "no-shell-tool,claude-not-on-path", "--json"], { sys: bad() })).json();
+  assert.equal(j.ok, true);
+  assert.deepEqual(j.ignored, ["no-shell-tool", "claude-not-on-path"]);
+  assert.deepEqual(j.counts, { error: 0, warning: 0, note: 2 });
+  assert.ok(!j.findings.some((f) => ["no-shell-tool", "claude-not-on-path"].includes(f.id)));
+
+  const md = await run(["check", "--ignore", "no-shell-tool", "--markdown"], { sys: bad() });
+  assert.equal(md.code, 0);
+  assert.doesNotMatch(md.out, /`no-shell-tool`/);
+  assert.match(md.out, /`claude-not-on-path`/);
+
+  const clean = await run(["check", "--ignore", "no-shell-tool"], { sys: winMachine() });
+  assert.equal(clean.code, 0);
+  assert.match(clean.out, /No findings\.\nIgnored: no-shell-tool \(--ignore\)\.\n$/);
+
+  const unk = await run(["check", "--ignore", "no-shell-tol"]);
+  assert.equal(unk.code, 2);
+  assert.match(unk.err, /claude-windows-doctor: --ignore: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
+  const unkJ = (await run(["check", "--ignore", "no-shell-tol", "--json"])).json();
+  assert.equal(unkJ.ok, false);
+  assert.match(unkJ.error, /^--ignore: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
 });
 
 test("on Linux and macOS there is nothing to check, said in every form, with exit 0; --live has nothing to prove", async () => {

@@ -8,13 +8,14 @@ import { collectWindows, collectWsl, kindOf, notApplicable } from "./check.mjs";
 import { versionOf } from "./binaries.mjs";
 import { proveShell } from "./live.mjs";
 import { runFix, runUndo } from "./fix.mjs";
+import { countFindings } from "./findings.mjs";
 import { IDS, idsContaining, listPages, nearIds, pageFor } from "./explain.mjs";
 import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListMarkdown, explainListText, explainMarkdown, explainText, fixJson, fixText } from "./report.mjs";
 
 export const HELP = `Usage: claude-windows-doctor <command> [options]
 
 Read (they change nothing):
-  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>]
+  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>] [--ignore <id,...>]
            on Windows: the shell tools Claude Code gives the model (the Bash tool when it finds Git
            Bash, the PowerShell tool) and why, in the order Claude Code looks; every claude on PATH
            and in the places the installers use, with its version and which one runs first; Node and
@@ -25,7 +26,8 @@ Read (they change nothing):
            choice with the real claude through a fake API on 127.0.0.1 (no token is spent), using
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings, or --max <n>); it
-           always exits 0, because Claude Code drops a skill whose command fails
+           always exits 0, because Claude Code drops a skill whose command fails; --ignore <id,...>
+           leaves the named findings out of the report, the exit code and the JSON
   explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
@@ -56,20 +58,20 @@ Anthropic or anyone else.
 `;
 
 const COMMANDS = {
-  check: { options: ["project", "json", "markdown", "live", "claude", "max"], positional: 0 },
+  check: { options: ["project", "json", "markdown", "live", "claude", "max", "ignore"], positional: 0 },
   explain: { options: ["json", "list", "markdown"], positional: 1 },
   fix: { options: ["project", "json", "dryRun", "gitBash", "path"], positional: 0 },
   undo: { options: ["json", "dryRun"], positional: 0 },
 };
 
 const FLAGS = { "--json": "json", "--markdown": "markdown", "--live": "live", "--list": "list", "--dry-run": "dryRun", "--git-bash": "gitBash", "-h": "help", "--help": "help", "-v": "version", "--version": "version" };
-const VALUES = { "--project": "project", "--claude": "claude", "--path": "path", "--max": "max" };
+const VALUES = { "--project": "project", "--claude": "claude", "--path": "path", "--max": "max", "--ignore": "ignore" };
 
 class UsageError extends Error {}
 
-/** Reads the argument list. Returns { command, id, project, claude, path, max, json, markdown, live, list, dryRun, gitBash, help, version, given } or throws a UsageError. */
+/** Reads the argument list. Returns { command, id, project, claude, path, max, ignore, json, markdown, live, list, dryRun, gitBash, help, version, given } or throws a UsageError. */
 export function parseArgs(argv) {
-  const o = { command: null, id: null, project: undefined, claude: undefined, path: undefined, max: undefined, json: false, markdown: false, live: false, list: false, dryRun: false, gitBash: false, help: false, version: false, given: new Set() };
+  const o = { command: null, id: null, project: undefined, claude: undefined, path: undefined, max: undefined, ignore: undefined, json: false, markdown: false, live: false, list: false, dryRun: false, gitBash: false, help: false, version: false, given: new Set() };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -79,6 +81,7 @@ export function parseArgs(argv) {
       const key = VALUES[flag];
       const value = eq ? eq[2] : argv[++i];
       if (value === undefined || (!eq && /^--?[A-Za-z]/.test(value) && key !== "project")) throw new UsageError(`${flag} needs a value`);
+      if (key === "ignore" && o.given.has("ignore")) throw new UsageError("--ignore can only be given once");
       o.given.add(key);
       o[key] = value;
     } else if (Object.prototype.hasOwnProperty.call(FLAGS, flag) && !eq) {
@@ -106,6 +109,20 @@ export function parseArgs(argv) {
     if (!o.markdown) throw new UsageError("--max goes with --markdown");
     if (!/^[1-9]\d*$/.test(o.max)) throw new UsageError("--max needs a whole number, 1 or more");
     o.max = parseInt(o.max, 10);
+  }
+  if (o.command === "check" && o.ignore !== undefined) {
+    const raw = String(o.ignore).split(",").map((s) => s.trim()).filter(Boolean);
+    if (!raw.length) throw new UsageError("--ignore needs at least one finding id");
+    const validated = [];
+    for (const item of raw) {
+      const id = item.toLowerCase();
+      if (!IDS.includes(id)) {
+        const near = nearIds(id);
+        throw new UsageError(`--ignore: no finding called "${item}"${near.length ? `. Did you mean ${near.join(", ")}?` : ""}`);
+      }
+      if (!validated.includes(id)) validated.push(id);
+    }
+    o.ignore = validated;
   }
   if (o.markdown && o.json) throw new UsageError("--markdown and --json do not go together");
   return o;
@@ -211,6 +228,11 @@ export async function main(argv, io = {}) {
     if (io.tempDir) tempDir = io.tempDir;
     else { tempDir = makeTempDir(sys.tmpdir); ownTemp = true; }
     const facts = kind === "windows" ? collectWindows(sys, { project, userEnv: pickUserEnv(io, sys), dir: tempDir }) : collectWsl(sys, { project, dir: tempDir });
+    if (o.ignore && o.ignore.length) {
+      facts.findings = facts.findings.filter((x) => !o.ignore.includes(x.id));
+      facts.counts = countFindings(facts.findings);
+      facts.ignored = o.ignore;
+    }
     let liveFailed = false;
     if (o.live) {
       const target = o.claude ? { path: o.claude } : facts.binaries.first && !facts.binaries.first.skipped ? { path: facts.binaries.first.path } : null;
