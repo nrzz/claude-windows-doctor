@@ -10,6 +10,8 @@ import { proveShell } from "./live.mjs";
 import { runFix, runUndo } from "./fix.mjs";
 import { countFindings } from "./findings.mjs";
 import { IDS, idsContaining, listPages, nearIds, pageFor } from "./explain.mjs";
+import { isObject, readJsonFile } from "./jsonfile.mjs";
+import { shortPath } from "./settings.mjs";
 import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListMarkdown, explainListText, explainMarkdown, explainText, fixJson, fixText } from "./report.mjs";
 
 export const HELP = `Usage: claude-windows-doctor <command> [options]
@@ -27,7 +29,8 @@ Read (they change nothing):
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings, or --max <n>); it
            always exits 0, because Claude Code drops a skill whose command fails; --ignore <id,...>
-           leaves the named findings out of the report, the exit code and the JSON
+           leaves the named findings out of the report, the exit code and the JSON. A project can
+           also set an ignore list in .claude\\windows-doctor.json
   explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
@@ -113,19 +116,23 @@ export function parseArgs(argv) {
   if (o.command === "check" && o.ignore !== undefined) {
     const raw = String(o.ignore).split(",").map((s) => s.trim()).filter(Boolean);
     if (!raw.length) throw new UsageError("--ignore needs at least one finding id");
-    const validated = [];
-    for (const item of raw) {
-      const id = item.toLowerCase();
-      if (!IDS.includes(id)) {
-        const near = nearIds(id);
-        throw new UsageError(`--ignore: no finding called "${item}"${near.length ? `. Did you mean ${near.join(", ")}?` : ""}`);
-      }
-      if (!validated.includes(id)) validated.push(id);
-    }
-    o.ignore = validated;
+    o.ignore = validateIgnore(raw, "--ignore");
   }
   if (o.markdown && o.json) throw new UsageError("--markdown and --json do not go together");
   return o;
+}
+
+export function validateIgnore(raw, sourceName) {
+  const validated = [];
+  for (const item of raw) {
+    const id = String(item).trim().toLowerCase();
+    if (!IDS.includes(id)) {
+      const near = nearIds(id);
+      throw new UsageError(`${sourceName}: no finding called "${item}"${near.length ? `. Did you mean ${near.join(", ")}?` : ""}`);
+    }
+    if (!validated.includes(id)) validated.push(id);
+  }
+  return validated;
 }
 
 const errorDoc = (message) => ({ ok: false, error: message });
@@ -225,13 +232,44 @@ export async function main(argv, io = {}) {
       if (o.json) stdout.write(`${JSON.stringify({ ok: false, refused: msg, platform: sys.platform }, null, 2)}\n`); else stderr.write(`${msg}\n`);
       return 1;
     }
+    const p = path[sys.platform === "win32" ? "win32" : "posix"];
+    const projectFolder = project || sys.cwd;
+    const ignoreFilePath = p.join(projectFolder, ".claude", "windows-doctor.json");
+    const ignoreFileDisplay = shortPath(ignoreFilePath, { project: projectFolder, home: sys.home, platform: sys.platform });
+    const ignoreFileRes = readJsonFile(sys, ignoreFilePath);
+    let fileIgnore = [];
+    let fileRead = false;
+    if (ignoreFileRes.exists) {
+      fileRead = true;
+      if (ignoreFileRes.error || ignoreFileRes.empty) {
+        throw new UsageError(`${ignoreFileDisplay}: not valid JSON${ignoreFileRes.error ? ` (${ignoreFileRes.error.message})` : ""}`);
+      }
+      if (!isObject(ignoreFileRes.data) || !Array.isArray(ignoreFileRes.data.ignore) || !ignoreFileRes.data.ignore.every((x) => typeof x === "string")) {
+        throw new UsageError(`${ignoreFileDisplay}: "ignore" is not a list of strings`);
+      }
+      fileIgnore = validateIgnore(ignoreFileRes.data.ignore, ignoreFileDisplay);
+    }
+
     if (io.tempDir) tempDir = io.tempDir;
     else { tempDir = makeTempDir(sys.tmpdir); ownTemp = true; }
     const facts = kind === "windows" ? collectWindows(sys, { project, userEnv: pickUserEnv(io, sys), dir: tempDir }) : collectWsl(sys, { project, dir: tempDir });
-    if (o.ignore && o.ignore.length) {
-      facts.findings = facts.findings.filter((x) => !o.ignore.includes(x.id));
+    const cliIgnore = o.ignore || [];
+    const joinedIgnore = [...fileIgnore];
+    for (const id of cliIgnore) {
+      if (!joinedIgnore.includes(id)) joinedIgnore.push(id);
+    }
+    if (fileRead) {
+      facts.ignoreFile = ignoreFilePath;
+      facts.ignoreFileDisplay = ignoreFileDisplay;
+    }
+    if (joinedIgnore.length) {
+      facts.findings = facts.findings.filter((x) => !joinedIgnore.includes(x.id));
       facts.counts = countFindings(facts.findings);
-      facts.ignored = o.ignore;
+      facts.ignored = joinedIgnore;
+      facts.ignoredSources = {
+        file: fileIgnore,
+        cli: cliIgnore.filter((id) => !fileIgnore.includes(id)),
+      };
     }
     let liveFailed = false;
     if (o.live) {

@@ -4,6 +4,9 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `check` reads the project's ignore list from `.claude/windows-doctor.json` (`{ "ignore": ["<id>", ...] }`) in the project folder (`--project <dir>`, the current folder by default). The ids from the file and from `--ignore` are joined without duplicates and left out of the report, counts and exit code. The text report shows where each came from (`Ignored: autocrlf, user-env-differs (.claude\windows-doctor.json), long-paths (--ignore).`); JSON adds `ignoreFile: "<path>"` when a file was read. A missing file is not an error; a file that is not JSON, whose `ignore` is not a list of strings, or that contains an unknown finding id is a usage error (exit 2).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#15](https://github.com/nrzz/claude-windows-doctor/issues/15).
+
 ## [1.6.0] - 2026-10-19
 
 - `check --ignore <id,...>` leaves the named findings out of the report, the exit code and the JSON (`ignored: [...]`). Finding ids are comma-separated and case-insensitive, with surrounding whitespace ignored. When an unknown id is given, it exits 2 with a suggestion when close to an existing finding id. Giving `--ignore` more than once or with an empty list is a usage error (exit 2).

@@ -121,11 +121,25 @@ function liveText(live) {
   return out;
 }
 
+function ignoredLine(f) {
+  if (!f.ignored || !f.ignored.length) return null;
+  if (!f.ignoredSources) return `Ignored: ${f.ignored.join(", ")} (--ignore).`;
+  const parts = [];
+  if (f.ignoredSources.file && f.ignoredSources.file.length) {
+    parts.push(`${f.ignoredSources.file.join(", ")} (${f.ignoreFileDisplay || f.ignoreFile})`);
+  }
+  if (f.ignoredSources.cli && f.ignoredSources.cli.length) {
+    parts.push(`${f.ignoredSources.cli.join(", ")} (--ignore)`);
+  }
+  return `Ignored: ${parts.join(", ")}.`;
+}
+
 function findingsText(f) {
   const out = [];
+  const ig = ignoredLine(f);
   if (!f.findings.length) {
     out.push("No findings.");
-    if (f.ignored && f.ignored.length) out.push(`Ignored: ${f.ignored.join(", ")} (--ignore).`);
+    if (ig) out.push(ig);
     return out;
   }
   out.push("Findings");
@@ -138,7 +152,7 @@ function findingsText(f) {
   }
   out.push("");
   out.push(`${plural(f.counts.error, "error")}, ${plural(f.counts.warning, "warning")}, ${plural(f.counts.note, "note")}`);
-  if (f.ignored && f.ignored.length) out.push(`Ignored: ${f.ignored.join(", ")} (--ignore).`);
+  if (ig) out.push(ig);
   return out;
 }
 
@@ -214,7 +228,7 @@ export function checkJson(f) {
   if (f.applicable === false) return { ok: true, applicable: false, platform: f.platform, kind: f.kind, system: f.system, message: NOTHING(f.platform), findings: [], counts: f.counts };
   const base = { ok: f.counts.error + f.counts.warning === 0, applicable: true, platform: f.platform, kind: f.kind, project: f.project, system: f.system };
   if (f.kind === "wsl") {
-    return { ...base, binaries: binariesJson(f.binaries), locations: f.locations, wslInherits: f.wslInherits, findings: f.findings.map(findingJson), ...(f.ignored && f.ignored.length ? { ignored: f.ignored } : {}), counts: f.counts };
+    return { ...base, binaries: binariesJson(f.binaries), locations: f.locations, wslInherits: f.wslInherits, findings: f.findings.map(findingJson), ...(f.ignored && f.ignored.length ? { ignored: f.ignored } : {}), ...(f.ignoreFile ? { ignoreFile: f.ignoreFile } : {}), counts: f.counts };
   }
   const s = f.shell;
   const variable = (v) => ({ value: v.value, source: v.source, ignored: (v.ignored || []).map((i) => ({ scope: i.scope, file: i.display, value: i.value })) });
@@ -244,6 +258,7 @@ export function checkJson(f) {
     ...(f.live ? { live: liveJson(f.live) } : {}),
     findings: f.findings.map(findingJson),
     ...(f.ignored && f.ignored.length ? { ignored: f.ignored } : {}),
+    ...(f.ignoreFile ? { ignoreFile: f.ignoreFile } : {}),
     counts: f.counts,
   };
 }
