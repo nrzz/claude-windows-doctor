@@ -59,7 +59,7 @@ The examples are real runs on Windows 11 in a throwaway folder: an empty Claude 
 Usage: claude-windows-doctor <command> [options]
 
 Read (they change nothing):
-  check    [--live] [--claude <path>] [--project <dir>] [--markdown]
+  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>]
            on Windows: the shell tools Claude Code gives the model (the Bash tool when it finds Git
            Bash, the PowerShell tool) and why, in the order Claude Code looks; every claude on PATH
            and in the places the installers use, with its version and which one runs first; Node and
@@ -69,8 +69,8 @@ Read (they change nothing):
            and macOS: nothing to check. Exit 1 on an error or a warning. --live proves the shell
            choice with the real claude through a fake API on 127.0.0.1 (no token is spent), using
            the first claude on PATH or --claude. --markdown is the short report the
-           /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
-           because Claude Code drops a skill whose command fails
+           /windows-doctor:check skill hands to Claude (at most 12 findings, or --max <n>); it
+           always exits 0, because Claude Code drops a skill whose command fails
   explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
@@ -201,7 +201,7 @@ The shell the model gets
 
 (The tool starts the Git Bash that Claude Code would take with `-c "exit 0"`, to say whether it starts. When the variable is set, the PowerShell tool is decided by the account: Claude Code's documentation says on for claude.ai and Console accounts, and off for Bedrock, Vertex and Foundry. The real binary behind a fake API has no account, so there it was off; `check` says so instead of guessing.)
 
-`--markdown` is the short report that the skill hands to Claude: a header, the system, the shell in one line, and the errors and warnings, one line each with the fix, at most 12 of them. It always exits 0, because Claude Code drops a skill whose command fails (put to the binary: a command that exits 1 never reached the model, and one that exits 0 did).
+`--markdown` is the short report that the skill hands to Claude: a header, the system, the shell in one line, and the errors and warnings, one line each with the fix, at most 12 of them. It always exits 0, because Claude Code drops a skill whose command fails (put to the binary: a command that exits 1 never reached the model, and one that exits 0 did). `--max <n>` sets how many errors and warnings the report holds (default 12, minimum 1, whole numbers only); `--max` without `--markdown` is a usage error.
 
 ```text
 $ claude-windows-doctor check --markdown

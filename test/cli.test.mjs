@@ -23,6 +23,8 @@ test("parseArgs: every command and option, and every usage error with its words"
   ok(["check"], { command: "check", live: false, json: false, markdown: false });
   ok(["check", "--live", "--claude", "C:\\x\\claude.exe", "--project", "D:\\p", "--json"], { live: true, claude: "C:\\x\\claude.exe", project: "D:\\p", json: true });
   ok(["check", "--markdown", "--project=D:\\p"], { markdown: true, project: "D:\\p" });
+  ok(["check", "--markdown", "--max", "3"], { command: "check", markdown: true, max: 3 });
+  ok(["check", "--markdown", "--max=40"], { command: "check", markdown: true, max: 40 });
   ok(["explain", "git-bash-not-found", "--json"], { command: "explain", id: "git-bash-not-found", json: true });
   ok(["explain", "--list"], { command: "explain", id: null, list: true });
   ok(["explain", "--list", "git-bash"], { command: "explain", id: "git-bash", list: true });
@@ -45,6 +47,12 @@ test("parseArgs: every command and option, and every usage error with its words"
   bad(["check", "--claude", "--live"], /--claude needs a value/);
   bad(["check", "--claude", "x"], /--claude is for --live/);
   bad(["check", "--markdown", "--live"], /--markdown is the short report of the skill and does not run --live/);
+  bad(["check", "--max", "3"], /--max goes with --markdown/);
+  bad(["check", "--markdown", "--max"], /--max needs a value/);
+  bad(["check", "--markdown", "--max", "0"], /--max needs a whole number, 1 or more/);
+  bad(["check", "--markdown", "--max", "-1"], /--max needs a whole number, 1 or more/);
+  bad(["check", "--markdown", "--max", "nope"], /--max needs a whole number, 1 or more/);
+  bad(["check", "--markdown", "--max", "1.5"], /--max needs a whole number, 1 or more/);
   bad(["check", "--dry-run"], /check does not take --dry-run/);
   bad(["check", "--git-bash"], /check does not take --git-bash/);
   bad(["explain"], /explain needs a finding id or --list \(no-shell-tool, /);
@@ -63,6 +71,9 @@ test("parseArgs: every command and option, and every usage error with its words"
   bad(["undo", "--path", "x"], /undo does not take --path/);
   bad(["undo", "--project", "x"], /undo does not take --project/);
   bad(["explain", "git-bash-not-found", "--project", "x"], /explain does not take --project/);
+  bad(["explain", "git-bash-not-found", "--max", "3"], /explain does not take --max/);
+  bad(["fix", "--git-bash", "--max", "3"], /fix does not take --max/);
+  bad(["undo", "--max", "3"], /undo does not take --max/);
 });
 
 test("--help is the usage block, --version the version, and both exit 0; a usage error exits 2 with a line on stderr, or a JSON document with --json", async () => {
@@ -76,6 +87,12 @@ test("--help is the usage block, --version the version, and both exit 0; a usage
   assert.equal(u.out, "");
   const j = await run(["nope", "--json"]);
   assert.deepEqual([j.code, j.json()], [2, { ok: false, error: 'unknown command "nope"' }]);
+  const noMd = await run(["check", "--max", "3"]);
+  assert.equal(noMd.code, 2);
+  assert.match(noMd.err, /^claude-windows-doctor: --max goes with --markdown\n/);
+  const notNum = await run(["check", "--markdown", "--max", "0"]);
+  assert.equal(notNum.code, 2);
+  assert.match(notNum.err, /^claude-windows-doctor: --max needs a whole number, 1 or more\n/);
 });
 
 test("check on a clean pretend machine: exit 0, the report, JSON that parses, markdown that is short", async () => {
@@ -128,6 +145,14 @@ test("check --markdown is capped: at most 12 findings and 500 characters a line,
   assert.match(lines.at(-1), /^- \.\.\. and 8 more \(run `claude-windows-doctor check`\)$/);
   assert.ok(lines.length <= 17, `${lines.length} lines`);
   for (const l of lines) assert.ok(l.length <= 500, `${l.length} characters`);
+  const r3 = await run(["check", "--markdown", "--max", "3"], { sys });
+  const lines3 = r3.out.trimEnd().split("\n");
+  assert.equal(lines3.filter((l) => l.startsWith("- WARNING")).length, 3);
+  assert.match(lines3.at(-1), /^- \.\.\. and 17 more \(run `claude-windows-doctor check`\)$/);
+  const r40 = await run(["check", "--markdown", "--max", "40"], { sys });
+  const lines40 = r40.out.trimEnd().split("\n");
+  assert.equal(lines40.filter((l) => l.startsWith("- WARNING")).length, 20);
+  assert.ok(!lines40.some((l) => l.includes("and") && l.includes("more")));
 });
 
 test("on Linux and macOS there is nothing to check, said in every form, with exit 0; --live has nothing to prove", async () => {

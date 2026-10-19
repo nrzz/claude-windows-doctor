@@ -14,7 +14,7 @@ import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, expl
 export const HELP = `Usage: claude-windows-doctor <command> [options]
 
 Read (they change nothing):
-  check    [--live] [--claude <path>] [--project <dir>] [--markdown]
+  check    [--live] [--claude <path>] [--project <dir>] [--markdown] [--max <n>]
            on Windows: the shell tools Claude Code gives the model (the Bash tool when it finds Git
            Bash, the PowerShell tool) and why, in the order Claude Code looks; every claude on PATH
            and in the places the installers use, with its version and which one runs first; Node and
@@ -24,8 +24,8 @@ Read (they change nothing):
            and macOS: nothing to check. Exit 1 on an error or a warning. --live proves the shell
            choice with the real claude through a fake API on 127.0.0.1 (no token is spent), using
            the first claude on PATH or --claude. --markdown is the short report the
-           /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
-           because Claude Code drops a skill whose command fails
+           /windows-doctor:check skill hands to Claude (at most 12 findings, or --max <n>); it
+           always exits 0, because Claude Code drops a skill whose command fails
   explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
@@ -56,20 +56,20 @@ Anthropic or anyone else.
 `;
 
 const COMMANDS = {
-  check: { options: ["project", "json", "markdown", "live", "claude"], positional: 0 },
+  check: { options: ["project", "json", "markdown", "live", "claude", "max"], positional: 0 },
   explain: { options: ["json", "list", "markdown"], positional: 1 },
   fix: { options: ["project", "json", "dryRun", "gitBash", "path"], positional: 0 },
   undo: { options: ["json", "dryRun"], positional: 0 },
 };
 
 const FLAGS = { "--json": "json", "--markdown": "markdown", "--live": "live", "--list": "list", "--dry-run": "dryRun", "--git-bash": "gitBash", "-h": "help", "--help": "help", "-v": "version", "--version": "version" };
-const VALUES = { "--project": "project", "--claude": "claude", "--path": "path" };
+const VALUES = { "--project": "project", "--claude": "claude", "--path": "path", "--max": "max" };
 
 class UsageError extends Error {}
 
-/** Reads the argument list. Returns { command, id, project, claude, path, json, markdown, live, list, dryRun, gitBash, help, version, given } or throws a UsageError. */
+/** Reads the argument list. Returns { command, id, project, claude, path, max, json, markdown, live, list, dryRun, gitBash, help, version, given } or throws a UsageError. */
 export function parseArgs(argv) {
-  const o = { command: null, id: null, project: undefined, claude: undefined, path: undefined, json: false, markdown: false, live: false, list: false, dryRun: false, gitBash: false, help: false, version: false, given: new Set() };
+  const o = { command: null, id: null, project: undefined, claude: undefined, path: undefined, max: undefined, json: false, markdown: false, live: false, list: false, dryRun: false, gitBash: false, help: false, version: false, given: new Set() };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -102,6 +102,11 @@ export function parseArgs(argv) {
   if (o.command === "fix" && !o.gitBash) throw new UsageError("fix needs what to fix: --git-bash");
   if (o.command === "fix" && o.path !== undefined && !o.gitBash) throw new UsageError("--path goes with --git-bash");
   if (o.command === "check" && o.markdown && o.live) throw new UsageError("--markdown is the short report of the skill and does not run --live");
+  if (o.command === "check" && o.max !== undefined) {
+    if (!o.markdown) throw new UsageError("--max goes with --markdown");
+    if (!/^[1-9]\d*$/.test(o.max)) throw new UsageError("--max needs a whole number, 1 or more");
+    o.max = parseInt(o.max, 10);
+  }
   if (o.markdown && o.json) throw new UsageError("--markdown and --json do not go together");
   return o;
 }
@@ -195,7 +200,7 @@ export async function main(argv, io = {}) {
         if (o.json) stdout.write(`${JSON.stringify({ ok: false, refused: msg, applicable: false, platform: sys.platform }, null, 2)}\n`); else stderr.write(`${msg}\n`);
         return 1;
       }
-      if (o.markdown) stdout.write(checkMarkdown(f)); else emit(checkJson(f), checkText(f));
+      if (o.markdown) stdout.write(checkMarkdown(f, o.max !== undefined ? { maxFindings: o.max } : {})); else emit(checkJson(f), checkText(f));
       return 0;
     }
     if (o.live && kind !== "windows") {
@@ -223,7 +228,7 @@ export async function main(argv, io = {}) {
         liveFailed = !facts.live.ok || !facts.live.proved;
       }
     }
-    if (o.markdown) { stdout.write(checkMarkdown(facts)); return 0; }
+    if (o.markdown) { stdout.write(checkMarkdown(facts, o.max !== undefined ? { maxFindings: o.max } : {})); return 0; }
     emit(checkJson(facts), checkText(facts));
     return facts.counts.error + facts.counts.warning > 0 || liveFailed ? 1 : 0;
   } catch (e) {
