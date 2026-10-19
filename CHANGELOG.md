@@ -4,7 +4,10 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
-- `check --markdown --max <n>` sets how many errors and warnings the short report holds (default 12, minimum 1): `--max 3` prints three findings and says how many more there are, and `--max 40` prints up to 40. `--max` without `--markdown` is a usage error, and a non-integer or a value less than 1 is refused with `--max needs a whole number, 1 or more` (exit 2).
+## [1.5.0] - 2026-10-19
+
+- `check --markdown --max <n>` sets how many errors and warnings the short report holds (12 without it, the skill's cap; 1 or more): `--max 3` prints three and says how many more there are, `--max 40` prints up to 40. `--max` without `--markdown` is a usage error (`--max goes with --markdown`), and anything but a whole number of 1 or more is refused with `--max needs a whole number, 1 or more` (exit 2). The skill is unchanged.
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#12](https://github.com/nrzz/claude-windows-doctor/pull/12), for the good first issue [#11](https://github.com/nrzz/claude-windows-doctor/issues/11).
 
 ## [1.4.0] - 2026-10-19
 
@@ -43,6 +46,7 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.5.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.5.0
 [1.4.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.3.0
 [1.2.1]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.2.1
@@ -50,4 +54,4 @@ All notable changes to claude-windows-doctor are written here. The format follow
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.5.0...HEAD

@@ -2,7 +2,7 @@
 
 What could come next. None of it is promised; all of it is open to contributors. Comment on an issue or start a [discussion](https://github.com/nrzz/claude-windows-doctor/discussions) before a large change.
 
-- `check --markdown --max <n>`: how many findings the short report holds (12 today, the skill's cap), for a person pasting it whole or short. This is the open good first issue: [#11](https://github.com/nrzz/claude-windows-doctor/issues/11).
+- `check --ignore <id,...>`: leave named findings out of a run, visibly, so a finding that is right about the machine and wrong about the person stops deciding the exit code. This is the open good first issue: [#13](https://github.com/nrzz/claude-windows-doctor/issues/13).
 - Windows 10 and ARM64: the real-binary checks were run on Windows 11 on x64 and on the `windows-latest` runner (Windows Server 2025, x64) only. A run of `claude-windows-doctor check --live` on Windows 10, or on a Windows on ARM machine, with what it printed, would show whether the Git Bash search and the registry reads behave the same there.
 - The PowerShell tool when Git Bash is found and `CLAUDE_CODE_USE_POWERSHELL_TOOL` is not set: Claude Code decides with a flag from its server, which the throwaway runs of the real binary cannot see (they switch non-essential traffic off), so `check` says "decided by your account" and quotes the documentation. Find out where Claude Code caches that flag, if it does, and say yes or no from it.
 - `check` inside a real WSL distribution: the WSL side is held to a pretend machine in the tests, not to a distribution. A CI job on `windows-latest` that installs a distribution and runs the checks in it would put it to a real one.
