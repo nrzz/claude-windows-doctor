@@ -4,6 +4,8 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `explain --markdown` prints a finding page as Markdown with a `## <id>: <title>` heading, what Claude Code does with each line marked, the fix, and issue threads as Markdown links (or `**The issue threads:** none found for this`). `explain --list --markdown` prints the list (or the filtered matches) as a Markdown table `| id | title |`. `--markdown` together with `--json` is a usage error.
+
 ## [1.3.0] - 2026-10-19
 
 - `explain --list <part>` prints the finding ids that contain the part, with their titles, in page order, in any case and with surrounding whitespace ignored (`explain --list git-bash` prints the four); `--json` gives the same document as `explain --list --json`, filtered. A part that no id contains exits 1 with `no finding id contains "<part>"` and, in JSON, every id and the nearest ids. `explain --list` with a part was a usage error before.

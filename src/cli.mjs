@@ -9,7 +9,7 @@ import { versionOf } from "./binaries.mjs";
 import { proveShell } from "./live.mjs";
 import { runFix, runUndo } from "./fix.mjs";
 import { IDS, idsContaining, listPages, nearIds, pageFor } from "./explain.mjs";
-import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListText, explainText, fixJson, fixText } from "./report.mjs";
+import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListMarkdown, explainListText, explainMarkdown, explainText, fixJson, fixText } from "./report.mjs";
 
 export const HELP = `Usage: claude-windows-doctor <command> [options]
 
@@ -26,7 +26,7 @@ Read (they change nothing):
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
            because Claude Code drops a skill whose command fails
-  explain  [--list [<part>] | <finding-id>]
+  explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
 
@@ -57,7 +57,7 @@ Anthropic or anyone else.
 
 const COMMANDS = {
   check: { options: ["project", "json", "markdown", "live", "claude"], positional: 0 },
-  explain: { options: ["json", "list"], positional: 1 },
+  explain: { options: ["json", "list", "markdown"], positional: 1 },
   fix: { options: ["project", "json", "dryRun", "gitBash", "path"], positional: 0 },
   undo: { options: ["json", "dryRun"], positional: 0 },
 };
@@ -102,6 +102,7 @@ export function parseArgs(argv) {
   if (o.command === "fix" && !o.gitBash) throw new UsageError("fix needs what to fix: --git-bash");
   if (o.command === "fix" && o.path !== undefined && !o.gitBash) throw new UsageError("--path goes with --git-bash");
   if (o.command === "check" && o.markdown && o.live) throw new UsageError("--markdown is the short report of the skill and does not run --live");
+  if (o.markdown && o.json) throw new UsageError("--markdown and --json do not go together");
   return o;
 }
 
@@ -142,7 +143,8 @@ export async function main(argv, io = {}) {
       if (o.list) {
         const pages = listPages();
         if (!o.id) {
-          emit(explainListJson(pages), explainListText(pages));
+          if (o.markdown) stdout.write(explainListMarkdown(pages));
+          else emit(explainListJson(pages), explainListText(pages));
           return 0;
         }
         const ids = idsContaining(o.id);
@@ -153,7 +155,8 @@ export async function main(argv, io = {}) {
           return 1;
         }
         const matches = pages.filter((page) => ids.includes(page.id));
-        emit(explainListJson(matches), explainListText(matches));
+        if (o.markdown) stdout.write(explainListMarkdown(matches));
+        else emit(explainListJson(matches), explainListText(matches));
         return 0;
       }
       const page = pageFor(o.id);
@@ -170,7 +173,8 @@ export async function main(argv, io = {}) {
         else stderr.write(`claude-windows-doctor: no finding called "${o.id}".${near.length ? ` Did you mean ${near.join(", ")}?` : ""}\nThe ids: ${IDS.join(", ")}\n`);
         return 1;
       }
-      emit(explainJson(page), explainText(page));
+      if (o.markdown) stdout.write(explainMarkdown(page));
+      else emit(explainJson(page), explainText(page));
       return 0;
     }
 
