@@ -9,7 +9,7 @@ import { HELP, parseArgs } from "../src/cli.mjs";
 import { REAL_KEY, regUserEnv } from "../src/winenv.mjs";
 import { RECORD_SCHEMA } from "../src/write.mjs";
 import { VERSION } from "../src/version.mjs";
-import { IDS } from "../src/explain.mjs";
+import { IDS, nearIds } from "../src/explain.mjs";
 
 const E_GIT = ["E:\\Das\\Git\\cmd\\git.exe", "E:\\Das\\Git\\mingw64\\bin\\git.exe", "E:\\Das\\Git\\bin\\bash.exe"];
 const memStore = () => {
@@ -25,7 +25,9 @@ test("parseArgs: every command and option, and every usage error with its words"
   ok(["check", "--markdown", "--project=D:\\p"], { markdown: true, project: "D:\\p" });
   ok(["explain", "git-bash-not-found", "--json"], { command: "explain", id: "git-bash-not-found", json: true });
   ok(["explain", "--list"], { command: "explain", id: null, list: true });
+  ok(["explain", "--list", "git-bash"], { command: "explain", id: "git-bash", list: true });
   ok(["explain", "--list", "--json"], { command: "explain", id: null, list: true, json: true });
+  ok(["explain", "--list", "git-bash", "--json"], { command: "explain", id: "git-bash", list: true, json: true });
   ok(["fix", "--git-bash", "--path", "E:\\Git\\bin\\bash.exe", "--dry-run"], { gitBash: true, path: "E:\\Git\\bin\\bash.exe", dryRun: true });
   ok(["undo", "--dry-run", "--json"], { command: "undo", dryRun: true, json: true });
   ok(["--help"], { help: true });
@@ -44,8 +46,7 @@ test("parseArgs: every command and option, and every usage error with its words"
   bad(["check", "--git-bash"], /check does not take --git-bash/);
   bad(["explain"], /explain needs a finding id or --list \(no-shell-tool, /);
   bad(["explain", "a", "b"], /explain takes one finding id, not "a b"/);
-  bad(["explain", "a", "--list"], /explain takes --list or one finding id, not both/);
-  bad(["explain", "a", "b", "--list"], /explain takes --list or one finding id, not both/);
+  bad(["explain", "a", "b", "--list"], /explain takes one part, not "a b"/);
   bad(["explain", "x", "--live"], /explain does not take --live/);
   bad(["check", "--list"], /check does not take --list/);
   bad(["fix", "--git-bash", "--list"], /fix does not take --list/);
@@ -180,6 +181,26 @@ test("explain: a page, the list as text and JSON, an id that is not one (exit 1,
   const listJson = (await run(["explain", "--list", "--json"])).json();
   assert.equal(listJson.ok, true);
   assert.deepEqual(listJson.findings.map((p) => p.id), IDS);
+  const filtered = await run(["explain", "--list", " GIT-BASH "]);
+  assert.equal(filtered.code, 0);
+  assert.deepEqual(filtered.out.trimEnd().split("\n").map((line) => line.split(/\s{2,}/)[0]), [
+    "git-bash-not-found", "git-bash-path-ignored", "git-bash-path-project-settings", "git-bash-broken",
+  ]);
+  const filteredJson = (await run(["explain", "--list", "git-bash", "--json"])).json();
+  assert.equal(filteredJson.ok, true);
+  assert.deepEqual(filteredJson.findings.map((p) => p.id), [
+    "git-bash-not-found", "git-bash-path-ignored", "git-bash-path-project-settings", "git-bash-broken",
+  ]);
+  const one = (await run(["explain", "--list", "distro", "--json"])).json();
+  assert.deepEqual(one.findings.map((p) => p.id), ["wsl-no-distro"]);
+  const none = await run(["explain", "--list", "git-bash-missin"]);
+  assert.equal(none.code, 1);
+  assert.equal(none.out, "");
+  assert.equal(none.err, 'claude-windows-doctor: no finding id contains "git-bash-missin".\n');
+  const noneJson = (await run(["explain", "--list", "git-bash-missin", "--json"])).json();
+  assert.deepEqual([noneJson.ok, noneJson.refused, noneJson.ids, noneJson.near], [
+    false, 'no finding id contains "git-bash-missin"', IDS, nearIds("git-bash-missin"),
+  ]);
   const u = await run(["explain", "git-bash-missing"]);
   assert.equal(u.code, 1);
   assert.match(u.err, /no finding called "git-bash-missing"\. Did you mean git-bash-not-found, git-bash-path-ignored/);
@@ -189,9 +210,6 @@ test("explain: a page, the list as text and JSON, an id that is not one (exit 1,
   const m = await run(["explain"]);
   assert.equal(m.code, 2);
   assert.match(m.err, /explain needs a finding id or --list/);
-  const both = await run(["explain", "no-shell-tool", "--list", "--json"]);
-  assert.equal(both.code, 2);
-  assert.deepEqual(both.json(), { ok: false, error: "explain takes --list or one finding id, not both" });
 });
 
 test("explain: an ambiguous part names every matching id in order, in text and JSON", async () => {

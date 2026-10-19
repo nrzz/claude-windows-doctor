@@ -71,7 +71,7 @@ Read (they change nothing):
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
            because Claude Code drops a skill whose command fails
-  explain  [--list] <finding-id>
+  explain  [--list [<part>] | <finding-id>]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
 
@@ -313,7 +313,15 @@ No record of a fix was found (looked at C:\Users\me\.claude\windows-doctor\recor
 
 ### `explain`
 
-`explain <finding-id>` prints the page of a finding; the id may be written in any case or shortened to a part that matches exactly one id. `explain --list` prints every finding id with its title; add `--json` for a document with the same entries. Each line under "What Claude Code does" is marked: *verified* (seen in a real run, of the binary or of the Windows program the line names), *documented* (from Claude Code's, Windows' or git's documentation) or *not verified*. Exit 1 for an unknown id, with the nearest ids, or for an ambiguous part, with every matching id in page order.
+`explain <finding-id>` prints the page of a finding; the id may be written in any case or shortened to a part that matches exactly one id. `explain --list` prints every finding id with its title; `explain --list <part>` filters that list to every id containing the part, without regard to case and with surrounding whitespace ignored. Add `--json` for the same entries as a JSON document. When no id contains the part, the command exits 1; JSON includes every id and the nearest ids. Each line under "What Claude Code does" is marked: *verified* (seen in a real run, of the binary or of the Windows program the line names), *documented* (from Claude Code's, Windows' or git's documentation) or *not verified*. Exit 1 for an unknown id, with the nearest ids, or for an ambiguous part, with every matching id in page order.
+
+```text
+$ claude-windows-doctor explain --list git-bash
+git-bash-not-found               Git for Windows is installed, but Claude Code does not find its bash.exe
+git-bash-path-ignored            CLAUDE_CODE_GIT_BASH_PATH is set, and Claude Code ignores it
+git-bash-path-project-settings   CLAUDE_CODE_GIT_BASH_PATH is in a project or local settings file, where it is not used
+git-bash-broken                  Git Bash is found, and does not start
+```
 
 ```text
 $ claude-windows-doctor explain git-bash-not-found
@@ -362,9 +370,9 @@ check      { ok, applicable, platform, kind, project, system { os, release, arch
 fix        { ok, refused, reason, dryRun, action, name, key, layer, value, previous { value, type }, via, record, notes [] }    // previous is null when nothing was there; action is set or nothing, and null when refused
 undo       { ok, refused, reason, dryRun, action, name, key, layer, value, previous { value?, type? }, via, record, notes [] }    // action is restore, remove, forget or nothing
 explain    { ok, id, title, means, does [ { source, text } ], fix [], issues [ { number, title, url } ] }
-explain    { ok, findings [ { id, title } ] }    // explain --list
+explain    { ok, findings [ { id, title } ] }    // explain --list [<part>]
 error      { ok, error }    // a usage error with --json: exit 2
-error      { ok, refused, ids, near }    // explain with an id that is not one (ids: every id; near: the nearest) or a part that several ids contain (ids: those; near: []): exit 1
+error      { ok, refused, ids, near }    // unknown explain --list <part> (ids: every id; near: nearest), or an id that is not one / ambiguous part: exit 1
 ```
 
 ## How it works
