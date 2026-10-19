@@ -4,6 +4,9 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `check --ignore <id,...>` leaves the named findings out of the report, the exit code and the JSON (`ignored: [...]`). Finding ids are comma-separated and case-insensitive, with surrounding whitespace ignored. When an unknown id is given, it exits 2 with a suggestion when close to an existing finding id. Giving `--ignore` more than once or with an empty list is a usage error (exit 2).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#13](https://github.com/nrzz/claude-windows-doctor/issues/13).
+
 ## [1.5.0] - 2026-10-19
 
 - `check --markdown --max <n>` sets how many errors and warnings the short report holds (12 without it, the skill's cap; 1 or more): `--max 3` prints three and says how many more there are, `--max 40` prints up to 40. `--max` without `--markdown` is a usage error (`--max goes with --markdown`), and anything but a whole number of 1 or more is refused with `--max needs a whole number, 1 or more` (exit 2). The skill is unchanged.
