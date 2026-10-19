@@ -4,6 +4,8 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+- `check --markdown --max <n>` sets how many errors and warnings the short report holds (default 12, minimum 1): `--max 3` prints three findings and says how many more there are, and `--max 40` prints up to 40. `--max` without `--markdown` is a usage error, and a non-integer or a value less than 1 is refused with `--max needs a whole number, 1 or more` (exit 2).
+
 ## [1.4.0] - 2026-10-19
 
 - `explain <id> --markdown` prints a finding page as Markdown: a `## <id>: <title>` heading, the paragraph, "What Claude Code does" with each line's mark as `*(verified)*`, `*(documented)*` or `*(not verified)*`, the fix, and the issue threads as links (or `**The issue threads:** none found for this`). `explain --list --markdown`, with or without a part, prints the list as a `| id | title |` table. `--markdown` with `--json` is a usage error (exit 2); an unknown id or an ambiguous part is refused in text as before.
