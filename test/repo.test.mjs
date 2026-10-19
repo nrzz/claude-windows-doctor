@@ -234,7 +234,7 @@ test("the licence, the conduct file, the changelog and the version agree", () =>
   assert.match(read("SECURITY.md"), /security\/advisories\/new/);
   const roadmap = read("ROADMAP.md");
   assert.ok((roadmap.match(/^- /gm) || []).length >= 3 && (roadmap.match(/^- /gm) || []).length <= 5, "three to five next steps");
-  assert.match(roadmap, /good first issue: \[#13\]\(https:\/\/github\.com\/nrzz\/claude-windows-doctor\/issues\/13\)/, "the roadmap names the good first issue");
+  assert.match(roadmap, /good first issue: \[#15\]\(https:\/\/github\.com\/nrzz\/claude-windows-doctor\/issues\/15\)/, "the roadmap names the good first issue");
   assert.match(read("CONTRIBUTING.md"), /## Where things are/);
 });
 

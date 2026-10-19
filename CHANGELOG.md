@@ -4,8 +4,11 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-19
+
 - `check --ignore <id,...>` leaves the named findings out of the report, the exit code and the JSON (`ignored: [...]`). Finding ids are comma-separated and case-insensitive, with surrounding whitespace ignored. When an unknown id is given, it exits 2 with a suggestion when close to an existing finding id. Giving `--ignore` more than once or with an empty list is a usage error (exit 2).
-- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#13](https://github.com/nrzz/claude-windows-doctor/issues/13).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#14](https://github.com/nrzz/claude-windows-doctor/pull/14), for the good first issue [#13](https://github.com/nrzz/claude-windows-doctor/issues/13).
+- The README's test count is the runner's again: 206 automated tests (213 with the 7 helper files), 178 passing on Windows and 170 on Linux and macOS without a binary. It had said 199 since 1.0.0 while the releases since added tests.
 
 ## [1.5.0] - 2026-10-19
 
@@ -49,6 +52,7 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.6.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.6.0
 [1.5.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.5.0
 [1.4.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.3.0
@@ -57,4 +61,4 @@ All notable changes to claude-windows-doctor are written here. The format follow
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.6.0...HEAD
