@@ -106,7 +106,7 @@ Reads, and starts a few programs that only read. `--project <dir>` is the folder
 
 ```text
 $ claude-windows-doctor check
-claude-windows-doctor 1.2.1  the Windows setup of Claude Code
+claude-windows-doctor 1.3.0  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
@@ -185,7 +185,7 @@ The exit code of that run was 1: one warning. With `CLAUDE_CODE_GIT_BASH_PATH=E:
 
 ```text
 $ claude-windows-doctor check
-claude-windows-doctor 1.2.1  the Windows setup of Claude Code
+claude-windows-doctor 1.3.0  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
@@ -249,7 +249,7 @@ Adds the proof. It starts the real `claude` (the first on PATH, or `--claude <pa
 
 ```text
 $ claude-windows-doctor check --live --claude C:/Users/me/AppData/Roaming/Claude/claude-code/2.1.299/f0584be0fbaf/claude.exe
-claude-windows-doctor 1.2.1  the Windows setup of Claude Code
+claude-windows-doctor 1.3.0  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
