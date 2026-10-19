@@ -4,7 +4,10 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
-- `explain --markdown` prints a finding page as Markdown with a `## <id>: <title>` heading, what Claude Code does with each line marked, the fix, and issue threads as Markdown links (or `**The issue threads:** none found for this`). `explain --list --markdown` prints the list (or the filtered matches) as a Markdown table `| id | title |`. `--markdown` together with `--json` is a usage error.
+## [1.4.0] - 2026-10-19
+
+- `explain <id> --markdown` prints a finding page as Markdown: a `## <id>: <title>` heading, the paragraph, "What Claude Code does" with each line's mark as `*(verified)*`, `*(documented)*` or `*(not verified)*`, the fix, and the issue threads as links (or `**The issue threads:** none found for this`). `explain --list --markdown`, with or without a part, prints the list as a `| id | title |` table. `--markdown` with `--json` is a usage error (exit 2); an unknown id or an ambiguous part is refused in text as before.
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#10](https://github.com/nrzz/claude-windows-doctor/pull/10), for the good first issue [#9](https://github.com/nrzz/claude-windows-doctor/issues/9).
 
 ## [1.3.0] - 2026-10-19
 
@@ -38,10 +41,11 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.4.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.3.0
 [1.2.1]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.2.1
 [1.2.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.4.0...HEAD
