@@ -278,6 +278,12 @@ export function explainListJson(pages) {
   return { ok: true, findings: pages };
 }
 
+export function explainListMarkdown(pages) {
+  const out = ["| id | title |", "| --- | --- |"];
+  for (const p of pages) out.push(`| ${p.id} | ${p.title} |`);
+  return `${out.join("\n")}\n`;
+}
+
 export function explainText(p) {
   const out = [`${p.id}   ${p.title}`, "", p.means, "", "What Claude Code does"];
   for (const d of p.does) out.push(`  - ${d.source ? `(${d.source}) ` : ""}${d.text}`);
@@ -290,5 +296,19 @@ export function explainText(p) {
 
 export function explainJson(p) {
   return { ok: true, id: p.id, title: p.title, means: p.means, does: p.does, fix: p.fix, issues: p.issues };
+}
+
+export function explainMarkdown(p) {
+  const out = [`## ${p.id}: ${p.title}`, "", p.means, "", "**What Claude Code does**"];
+  for (const d of p.does) out.push(`- ${d.source ? `*(${d.source})* ` : ""}${d.text}`);
+  out.push("", "**The fix**");
+  for (const x of p.fix) out.push(`- ${x}`);
+  if (p.issues.length) {
+    out.push("", "**The issue threads**");
+    for (const i of p.issues) out.push(`- [#${i.number} ${i.title.replace(/\]/g, "\\]")}](${i.url})`);
+  } else {
+    out.push("", "**The issue threads:** none found for this");
+  }
+  return `${out.join("\n")}\n`;
 }
 

@@ -71,7 +71,7 @@ Read (they change nothing):
            the first claude on PATH or --claude. --markdown is the short report the
            /windows-doctor:check skill hands to Claude (at most 12 findings); it always exits 0,
            because Claude Code drops a skill whose command fails
-  explain  [--list [<part>] | <finding-id>]
+  explain  [--list [<part>] | <finding-id>] [--markdown]
            what a finding means, what Claude Code does in that case (each line marked verified,
            documented or not verified), the fix, and the issue threads
 
@@ -313,7 +313,7 @@ No record of a fix was found (looked at C:\Users\me\.claude\windows-doctor\recor
 
 ### `explain`
 
-`explain <finding-id>` prints the page of a finding; the id may be written in any case or shortened to a part that matches exactly one id. `explain --list` prints every finding id with its title; `explain --list <part>` filters that list to every id containing the part, without regard to case and with surrounding whitespace ignored. Add `--json` for the same entries as a JSON document. When no id contains the part, the command exits 1; JSON includes every id and the nearest ids. Each line under "What Claude Code does" is marked: *verified* (seen in a real run, of the binary or of the Windows program the line names), *documented* (from Claude Code's, Windows' or git's documentation) or *not verified*. Exit 1 for an unknown id, with the nearest ids, or for an ambiguous part, with every matching id in page order.
+`explain <finding-id>` prints the page of a finding; the id may be written in any case or shortened to a part that matches exactly one id. `explain --list` prints every finding id with its title; `explain --list <part>` filters that list to every id containing the part, without regard to case and with surrounding whitespace ignored. Add `--json` for the same entries as a JSON document. Add `--markdown` to print a finding page or the list as Markdown (`--markdown` with `--json` is a usage error). When no id contains the part, the command exits 1; JSON includes every id and the nearest ids. Each line under "What Claude Code does" is marked: *verified* (seen in a real run, of the binary or of the Windows program the line names), *documented* (from Claude Code's, Windows' or git's documentation) or *not verified*. Exit 1 for an unknown id, with the nearest ids, or for an ambiguous part, with every matching id in page order.
 
 ```text
 $ claude-windows-doctor explain --list git-bash

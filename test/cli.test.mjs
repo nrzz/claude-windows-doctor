@@ -28,6 +28,9 @@ test("parseArgs: every command and option, and every usage error with its words"
   ok(["explain", "--list", "git-bash"], { command: "explain", id: "git-bash", list: true });
   ok(["explain", "--list", "--json"], { command: "explain", id: null, list: true, json: true });
   ok(["explain", "--list", "git-bash", "--json"], { command: "explain", id: "git-bash", list: true, json: true });
+  ok(["explain", "git-bash-not-found", "--markdown"], { command: "explain", id: "git-bash-not-found", markdown: true });
+  ok(["explain", "--list", "--markdown"], { command: "explain", id: null, list: true, markdown: true });
+  ok(["explain", "--list", "git-bash", "--markdown"], { command: "explain", id: "git-bash", list: true, markdown: true });
   ok(["fix", "--git-bash", "--path", "E:\\Git\\bin\\bash.exe", "--dry-run"], { gitBash: true, path: "E:\\Git\\bin\\bash.exe", dryRun: true });
   ok(["undo", "--dry-run", "--json"], { command: "undo", dryRun: true, json: true });
   ok(["--help"], { help: true });
@@ -48,6 +51,8 @@ test("parseArgs: every command and option, and every usage error with its words"
   bad(["explain", "a", "b"], /explain takes one finding id, not "a b"/);
   bad(["explain", "a", "b", "--list"], /explain takes one part, not "a b"/);
   bad(["explain", "x", "--live"], /explain does not take --live/);
+  bad(["explain", "git-bash-not-found", "--markdown", "--json"], /--markdown and --json do not go together/);
+  bad(["explain", "--list", "--markdown", "--json"], /--markdown and --json do not go together/);
   bad(["check", "--list"], /check does not take --list/);
   bad(["fix", "--git-bash", "--list"], /fix does not take --list/);
   bad(["undo", "--list"], /undo does not take --list/);
@@ -231,6 +236,50 @@ test("explain: an ambiguous part names every matching id in order, in text and J
   const exact = await run(["explain", "autocrlf", "--json"]);
   assert.equal(exact.code, 0);
   assert.equal(exact.json().id, "autocrlf");
+});
+
+test("explain --markdown: a page, the list table, filtered list, usage error with --json, and refusals in text", async () => {
+  const p = await run(["explain", "git-bash-not-found", "--markdown"]);
+  assert.equal(p.code, 0);
+  assert.match(p.out, /^## git-bash-not-found: Git for Windows is installed, but Claude Code does not find its bash\.exe\n/);
+  assert.ok(p.out.includes("**What Claude Code does**"));
+  assert.ok(p.out.includes("**The fix**"));
+  assert.ok(p.out.includes("**The issue threads**"));
+
+  const list = await run(["explain", "--list", "--markdown"]);
+  assert.equal(list.code, 0);
+  assert.match(list.out, /^\| id \| title \|\n\| --- \| --- \|\n\| no-shell-tool \| /);
+
+  const filtered = await run(["explain", "--list", "git-bash", "--markdown"]);
+  assert.equal(filtered.code, 0);
+  const rows = filtered.out.trimEnd().split("\n");
+  assert.equal(rows.length, 6);
+  assert.equal(rows[2], "| git-bash-not-found | Git for Windows is installed, but Claude Code does not find its bash.exe |");
+
+  // usage error with --json (exit 2)
+  const errBoth = await run(["explain", "git-bash-not-found", "--markdown", "--json"]);
+  assert.equal(errBoth.code, 2);
+  assert.deepEqual(errBoth.json(), { ok: false, error: "--markdown and --json do not go together" });
+
+  const errListBoth = await run(["explain", "--list", "--markdown", "--json"]);
+  assert.equal(errListBoth.code, 2);
+  assert.deepEqual(errListBoth.json(), { ok: false, error: "--markdown and --json do not go together" });
+
+  // refusals in text (exit 1)
+  const unknown = await run(["explain", "nope", "--markdown"]);
+  assert.equal(unknown.code, 1);
+  assert.equal(unknown.out, "");
+  assert.match(unknown.err, /claude-windows-doctor: no finding called "nope"/);
+
+  const ambiguous = await run(["explain", "git-bash", "--markdown"]);
+  assert.equal(ambiguous.code, 1);
+  assert.equal(ambiguous.out, "");
+  assert.match(ambiguous.err, /claude-windows-doctor: "git-bash" is a part of 4 finding ids/);
+
+  const unmatchedList = await run(["explain", "--list", "git-bash-missin", "--markdown"]);
+  assert.equal(unmatchedList.code, 1);
+  assert.equal(unmatchedList.out, "");
+  assert.equal(unmatchedList.err, 'claude-windows-doctor: no finding id contains "git-bash-missin".\n');
 });
 
 test("fix and undo through the command line: the report, the exit codes, the JSON, and the refusal off Windows", async () => {

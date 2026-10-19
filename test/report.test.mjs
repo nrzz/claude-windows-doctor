@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { fakeMachine } from "./machine.mjs";
 import { HOME, PROJECT, collect, winMachine } from "./win-machine.mjs";
 import { collectWsl, notApplicable } from "../src/check.mjs";
-import { checkJson, checkMarkdown, checkText, explainListJson, explainListText, explainText, fixJson, fixText } from "../src/report.mjs";
+import { checkJson, checkMarkdown, checkText, explainJson, explainListJson, explainListMarkdown, explainListText, explainMarkdown, explainText, fixJson, fixText } from "../src/report.mjs";
 import { listPages, pageFor } from "../src/explain.mjs";
 
 const SECRET = "sk-ant-api03-SECRET-VALUE-0123456789";
@@ -22,6 +22,59 @@ test("the explain list is aligned text and a JSON document with every id and tit
   const width = Math.max(...pages.map((p) => p.id.length));
   assert.deepEqual(lines, pages.map((p) => `${p.id.padEnd(width)}   ${p.title}`));
   assert.deepEqual(explainListJson(pages), { ok: true, findings: pages });
+});
+
+test("the explain list markdown is a table with id and title", () => {
+  const pages = listPages();
+  const md = explainListMarkdown(pages);
+  const lines = md.trimEnd().split("\n");
+  assert.equal(lines[0], "| id | title |");
+  assert.equal(lines[1], "| --- | --- |");
+  assert.equal(lines.length, pages.length + 2);
+  assert.deepEqual(lines.slice(2), pages.map((p) => `| ${p.id} | ${p.title} |`));
+  const filtered = pages.filter((p) => p.id.includes("git-bash"));
+  const filteredMd = explainListMarkdown(filtered).trimEnd().split("\n");
+  assert.equal(filteredMd.length, 6);
+  assert.equal(filteredMd[2], "| git-bash-not-found | Git for Windows is installed, but Claude Code does not find its bash.exe |");
+});
+
+test("explain markdown: a finding page with marks, Windows paths, fixes and issue links", () => {
+  const p = pageFor("git-bash-not-found");
+  const md = explainMarkdown(p);
+  assert.match(md, /^## git-bash-not-found: Git for Windows is installed, but Claude Code does not find its bash\.exe\n\nClaude Code gives the model a Bash tool only when it finds Git Bash\./);
+  assert.match(md, /\n\n\*\*What Claude Code does\*\*\n- \*\((?:verified|documented|not verified)\)\* 1\. CLAUDE_CODE_GIT_BASH_PATH, when it names an existing file called bash\.exe/);
+  assert.ok(md.includes("C:\\Program Files\\Git\\bin\\bash.exe"));
+  assert.ok(md.includes("where.exe git"));
+  assert.match(md, /\n\n\*\*The fix\*\*\n- claude-windows-doctor fix --git-bash sets CLAUDE_CODE_GIT_BASH_PATH/);
+  assert.match(md, /\n\n\*\*The issue threads\*\*\n- \[#8674 Claude Code VS Code Extension Fails to Detect Git Bash on Windows Despite Correct Configuration \(closed, 68 comments\)\]\(https:\/\/github\.com\/anthropics\/claude-code\/issues\/8674\)/);
+  assert.ok(md.endsWith("\n"));
+});
+
+test("explain markdown: page with no threads prints the empty threads notice, and link text escapes closing brackets", () => {
+  const p = pageFor("powershell-variable-unread");
+  assert.equal(p.issues.length, 0);
+  const md = explainMarkdown(p);
+  assert.match(md, /\n\n\*\*The issue threads:\*\* none found for this\n$/);
+
+  const synthetic = {
+    id: "synthetic-finding",
+    title: "Synthetic finding title",
+    means: "Synthetic explanation with C:\\path_test\\*.",
+    does: [
+      { source: "documented", text: "Line with doc" },
+      { source: "not verified", text: "Line not verified" },
+      { source: null, text: "Line with no source" },
+    ],
+    fix: ["Fix step one", "Fix step two"],
+    issues: [
+      { number: 42, title: "Title [with brackets] and (parens)", url: "https://example.com/42" },
+    ],
+  };
+  const synMd = explainMarkdown(synthetic);
+  assert.ok(synMd.includes("- *(documented)* Line with doc"));
+  assert.ok(synMd.includes("- *(not verified)* Line not verified"));
+  assert.ok(synMd.includes("- Line with no source"));
+  assert.ok(synMd.includes("- [#42 Title [with brackets\\] and (parens)](https://example.com/42)"));
 });
 
 test("no secret is in the text, the markdown or the JSON: a token in the environment, in the registry or in a settings file is set, never its value", () => {
@@ -155,7 +208,7 @@ test("fix's report, as text and JSON: set, nothing to do, refused, and an undo",
 });
 
 test("plain words in the reports: no emoji, no superlatives", () => {
-  const all = [checkText(collect(spoiled())), checkMarkdown(collect(spoiled())), explainText(pageFor("git-bash-not-found"))].join("\n");
+  const all = [checkText(collect(spoiled())), checkMarkdown(collect(spoiled())), explainText(pageFor("git-bash-not-found")), explainMarkdown(pageFor("git-bash-not-found")), explainListMarkdown(listPages())].join("\n");
   assert.ok(!/\p{Extended_Pictographic}/u.test(all));
   assert.ok(!/\b(simply|easily|blazing|seamless|powerful|amazing)\b/i.test(all));
 });
