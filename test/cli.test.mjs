@@ -205,6 +205,87 @@ test("check --ignore leaves named findings out of text, json, markdown and exit 
   assert.match(unkJ.error, /^--ignore: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
 });
 
+test("check reads the project's ignore list from .claude/windows-doctor.json", async () => {
+  const bad = (fileContent) => {
+    const ignorePath = `${PROJECT}\\.claude\\windows-doctor.json`;
+    return winMachine({
+      noGit: true,
+      files: fileContent !== undefined ? [...E_GIT, ignorePath] : E_GIT,
+      texts: fileContent !== undefined ? { [ignorePath]: fileContent } : {},
+      registry: { "HKLM\\SOFTWARE\\GitForWindows": { InstallPath: ["REG_SZ", "E:\\Das\\Git"] } },
+      env: { Path: "C:\\Windows\\System32;C:\\Windows", CLAUDE_CODE_USE_POWERSHELL_TOOL: "0" },
+    });
+  };
+
+  const ignoreFile = `${PROJECT}\\.claude\\windows-doctor.json`;
+
+  // 1. The file alone
+  const fileAlone = await run(["check"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) });
+  assert.equal(fileAlone.code, 1);
+  assert.doesNotMatch(fileAlone.out, /\n {2}error {3}no-shell-tool\n/);
+  assert.match(fileAlone.out, /\n {2}warning {1}claude-not-on-path\n/);
+  assert.match(fileAlone.out, /0 errors, 1 warning, 2 notes\nIgnored: no-shell-tool \(\.claude\\windows-doctor\.json\)\.\n$/);
+  const jAlone = (await run(["check", "--json"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) })).json();
+  assert.equal(jAlone.ok, false);
+  assert.deepEqual(jAlone.ignored, ["no-shell-tool"]);
+  assert.equal(jAlone.ignoreFile, ignoreFile);
+
+  // 2. The file plus --ignore
+  const filePlusCli = await run(["check", "--ignore", "claude-not-on-path"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) });
+  assert.equal(filePlusCli.code, 0);
+  assert.doesNotMatch(filePlusCli.out, /\n {2}error {3}no-shell-tool\n/);
+  assert.doesNotMatch(filePlusCli.out, /\n {2}warning {1}claude-not-on-path\n/);
+  assert.match(filePlusCli.out, /0 errors, 0 warnings, 2 notes\nIgnored: no-shell-tool \(\.claude\\windows-doctor\.json\), claude-not-on-path \(--ignore\)\.\n$/);
+  const jPlusCli = (await run(["check", "--ignore", "claude-not-on-path", "--json"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) })).json();
+  assert.equal(jPlusCli.ok, true);
+  assert.deepEqual(jPlusCli.ignored, ["no-shell-tool", "claude-not-on-path"]);
+  assert.equal(jPlusCli.ignoreFile, ignoreFile);
+
+  // 3. A duplicate across the two (file has no-shell-tool, CLI has no-shell-tool,claude-not-on-path)
+  const dup = await run(["check", "--ignore", "no-shell-tool,claude-not-on-path"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) });
+  assert.equal(dup.code, 0);
+  assert.match(dup.out, /0 errors, 0 warnings, 2 notes\nIgnored: no-shell-tool \(\.claude\\windows-doctor\.json\), claude-not-on-path \(--ignore\)\.\n$/);
+  const jDup = (await run(["check", "--ignore", "no-shell-tool,claude-not-on-path", "--json"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tool"] })) })).json();
+  assert.equal(jDup.ok, true);
+  assert.deepEqual(jDup.ignored, ["no-shell-tool", "claude-not-on-path"]);
+  assert.equal(jDup.ignoreFile, ignoreFile);
+
+  // 4. Bad file: not JSON
+  const notJson = await run(["check"], { sys: bad("not a json {") });
+  assert.equal(notJson.code, 2);
+  assert.match(notJson.err, /claude-windows-doctor: \.claude\\windows-doctor\.json: not valid JSON/);
+  const jNotJson = (await run(["check", "--json"], { sys: bad("not a json {") })).json();
+  assert.equal(jNotJson.ok, false);
+  assert.match(jNotJson.error, /^\.claude\\windows-doctor\.json: not valid JSON/);
+
+  // 5. Bad file: ignore is not a list of strings
+  for (const invalid of [JSON.stringify({ ignore: "no-shell-tool" }), JSON.stringify({ ignore: [123] }), JSON.stringify("not-an-object"), JSON.stringify({})]) {
+    const notList = await run(["check"], { sys: bad(invalid) });
+    assert.equal(notList.code, 2);
+    assert.match(notList.err, /claude-windows-doctor: \.claude\\windows-doctor\.json: "ignore" is not a list of strings/);
+    const jNotList = (await run(["check", "--json"], { sys: bad(invalid) })).json();
+    assert.equal(jNotList.ok, false);
+    assert.match(jNotList.error, /^\.claude\\windows-doctor\.json: "ignore" is not a list of strings/);
+  }
+
+  // 6. Unknown id in the file
+  const unkFile = await run(["check"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tol"] })) });
+  assert.equal(unkFile.code, 2);
+  assert.match(unkFile.err, /claude-windows-doctor: \.claude\\windows-doctor\.json: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
+  const jUnkFile = (await run(["check", "--json"], { sys: bad(JSON.stringify({ ignore: ["no-shell-tol"] })) })).json();
+  assert.equal(jUnkFile.ok, false);
+  assert.match(jUnkFile.error, /^\.claude\\windows-doctor\.json: no finding called "no-shell-tol"\. Did you mean no-shell-tool/);
+
+  // 7. No file (common case)
+  const noFile = await run(["check"], { sys: bad(undefined) });
+  assert.equal(noFile.code, 1);
+  assert.doesNotMatch(noFile.out, /Ignored:/);
+  const jNoFile = (await run(["check", "--json"], { sys: bad(undefined) })).json();
+  assert.equal(jNoFile.ok, false);
+  assert.equal(jNoFile.ignoreFile, undefined);
+  assert.equal(jNoFile.ignored, undefined);
+});
+
 test("on Linux and macOS there is nothing to check, said in every form, with exit 0; --live has nothing to prove", async () => {
   for (const platform of ["linux", "darwin"]) {
     const sys = () => fakeMachine({ platform });
