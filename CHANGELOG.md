@@ -4,8 +4,11 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-28
+
 - `check` reads the project's ignore list from `.claude/windows-doctor.json` (`{ "ignore": ["<id>", ...] }`) in the project folder (`--project <dir>`, the current folder by default). The ids from the file and from `--ignore` are joined without duplicates and left out of the report, counts and exit code. The text report shows where each came from (`Ignored: autocrlf, user-env-differs (.claude\windows-doctor.json), long-paths (--ignore).`); JSON adds `ignoreFile: "<path>"` when a file was read. A missing file is not an error; a file that is not JSON, whose `ignore` is not a list of strings, or that contains an unknown finding id is a usage error (exit 2).
-- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#15](https://github.com/nrzz/claude-windows-doctor/issues/15).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#16](https://github.com/nrzz/claude-windows-doctor/pull/16), for the good first issue [#15](https://github.com/nrzz/claude-windows-doctor/issues/15).
+- The README's test count is the runner's again: 207 automated tests (214 with the 7 helper files), 179 passing on Windows and 171 on Linux and macOS without a binary. It had said 206 since 1.6.0, before the pull request's new test.
 
 ## [1.6.0] - 2026-10-19
 
@@ -55,6 +58,7 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.7.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.7.0
 [1.6.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.6.0
 [1.5.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.5.0
 [1.4.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.4.0
@@ -64,4 +68,4 @@ All notable changes to claude-windows-doctor are written here. The format follow
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.7.0...HEAD
