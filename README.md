@@ -108,7 +108,7 @@ Reads, and starts a few programs that only read. `--project <dir>` is the folder
 
 ```text
 $ claude-windows-doctor check
-claude-windows-doctor 1.7.0  the Windows setup of Claude Code
+claude-windows-doctor 1.7.1  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
@@ -187,7 +187,7 @@ The exit code of that run was 1: one warning. With `CLAUDE_CODE_GIT_BASH_PATH=E:
 
 ```text
 $ claude-windows-doctor check
-claude-windows-doctor 1.7.0  the Windows setup of Claude Code
+claude-windows-doctor 1.7.1  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
@@ -251,7 +251,7 @@ Adds the proof. It starts the real `claude` (the first on PATH, or `--claude <pa
 
 ```text
 $ claude-windows-doctor check --live --claude C:/Users/me/AppData/Roaming/Claude/claude-code/2.1.299/f0584be0fbaf/claude.exe
-claude-windows-doctor 1.7.0  the Windows setup of Claude Code
+claude-windows-doctor 1.7.1  the Windows setup of Claude Code
 project   C:\Users\me\shop
 system    Windows 11 Home Single Language (10.0.26300), x64; Node 24.19.0, npm 11.17.0
 
@@ -419,7 +419,7 @@ It reads the files and registry values listed above, on your machine, and starts
 
 Checked on 2026-10-16 on Windows 11 Home (build 10.0.26300, x64) with Node 24.19.0, git 2.55.0.windows.3 and Claude Code 2.1.295 and 2.1.299, the two versions the desktop app has bundled here; every real-binary check passed on both. Git for Windows is at `E:\Das\Git`, not under `C:\Program Files`. WSL 2.5.9.0 is installed with one distribution, `docker-desktop` (`wsl.exe --status`: default distribution docker-desktop, default version 2), so the WSL checks on this machine saw a Windows with nothing to work in. CI runs the unit tests on Linux, macOS and Windows with Node 20, 22 and 24 and on Linux with Node 18, and the real-binary checks on all three systems against the npm release of Claude Code. On commit 0ff0ce3 all 10 jobs of the unit tests (run 38961303266) and all 3 jobs of the real-binary checks (run 38961303303) were green, with Claude Code 2.1.301 (the npm release of 16 October 2026) in the second. The badges at the top show the latest runs. On 2026-10-17 every real-binary check that can run on Windows also passed on Claude Code 2.1.302, installed from npm, after the hand-off check learned what that version does (see The plugin, below).
 
-- **207 automated tests** (`npm test`, Node's own runner, no dependencies, about 13 seconds). `node --test` also reports each of the 7 helper files under `test/` as a passing test, on every Node version CI runs (18 to 24); those are not counted here (the runner's total was 214 on Windows, macOS and Linux). Without a Claude Code binary 179 pass on Windows and 28 are skipped: they are the real-binary checks below. On Linux and macOS 171 pass and 36 are skipped: those 28 and 8 that read or need the real Windows, where everything else runs on pretend machines. The tests cover:
+- **208 automated tests** (`npm test`, Node's own runner, no dependencies, about 13 seconds). `node --test` also reports each of the 7 helper files under `test/` as a passing test, on every Node version CI runs (18 to 24); those are not counted here (the runner's total was 215 on Windows, macOS and Linux). Without a Claude Code binary 180 pass on Windows and 28 are skipped: they are the real-binary checks below. On Linux and macOS 172 pass and 36 are skipped: those 28 and 8 that read or need the real Windows, where everything else runs on pretend machines. The tests cover:
   - the shell prediction: all 129 cases of the table on a pretend Windows machine (a clean one that a case spoils: Git trees, PATH, variables, settings files), `parseSwitch`, the reading of a Git Bash value, which variable counts from which file, the trail of the Git Bash search step by step (the fixed paths before PATH, a `git.exe` in the working folder or in a dependency folder below it skipped), the five places a PowerShell is looked for, and the account's default named and not guessed;
   - the settings loader: the files and their order (managed, local, project, user), `CLAUDE_CONFIG_DIR`, the managed settings from the registry, the folder and `HKCU` (the first with a policy key applies), drop-in files, a file that is not strict JSON, a byte-order mark, `env` by scope, numbers and booleans in `env`, deny rules;
   - the registry layer and the file that stands in for it: the `reg.exe` command lines (set, remove, the notification), the parsing of what `reg query` prints, a missing or failing `reg.exe`, names in any case, a type that is kept;

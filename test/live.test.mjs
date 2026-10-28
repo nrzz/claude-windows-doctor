@@ -90,6 +90,21 @@ test("startFakeApi listens on 127.0.0.1 only, records every request whole, answe
   } finally { await api.close(); }
 });
 
+test("startFakeApi reads a request whose two chunks split a character (the em dash of Claude Code's prompt) as the whole character", async () => {
+  const api = await startFakeApi();
+  try {
+    const body = Buffer.from(JSON.stringify({ model: "m", stream: false, system: "one — two", messages: [] }));
+    const cut = body.indexOf(0xe2) + 1;
+    await new Promise((resolve, reject) => {
+      const req = http.request({ host: "127.0.0.1", port: api.port, path: "/v1/messages", method: "POST", headers: { "content-type": "application/json" } }, (res) => { res.resume(); res.on("end", resolve); });
+      req.on("error", reject);
+      req.write(body.subarray(0, cut));
+      setTimeout(() => req.end(body.subarray(cut)), 50);
+    });
+    assert.equal(api.requests[0].system, "one — two");
+  } finally { await api.close(); }
+});
+
 test("runBinary runs the binary in a throwaway world: scrubbed environment, the copied settings, the tools of its first request, its debug lines, its exit", async () => {
   const sys = makeSys({ env: { ...process.env, CLAUDE_CODE_GIT_BASH_PATH: "C:\\g\\bash.exe", ANTHROPIC_API_KEY: "sk-real-secret", CLAUDE_EFFORT: "high", CLAUDE_CODE_USE_POWERSHELL_TOOL: "1" } });
   const base = tmpDir("cwd-run-");
