@@ -194,7 +194,9 @@ test("when the shell tool is not allowed for the command, Claude Code hands the 
       assert.ok(r.result && r.result.num_turns === 0, `no request, and the result document says so: ${String(r.out).slice(0, 300)}`);
       const said = String(r.result.result ?? "");
       if (atLeast("2.1.318")) {
-        assert.match(said, /^Shell command permission check failed for pattern "!`node "[^"]+claude-windows-doctor\.mjs" check --project "[^"]+" --markdown`": .*requires approval: node "[^"]+claude-windows-doctor\.mjs" check --project "[^"]+" --markdown$/s, `the result names the skill's command: ${said.slice(0, 300)}`);
+        // the reason after the colon is the PowerShell tool's: "This command requires approval" on windows-latest (PowerShell 7), the
+        // part that needs approval named on a machine whose PowerShell tool runs Windows PowerShell 5.1
+        assert.match(said, /^Shell command permission check failed for pattern "!`node "[^"]+claude-windows-doctor\.mjs" check --project "[^"]+" --markdown`": .*requires? approval/s, `the result names the skill's command: ${said.slice(0, 300)}`);
         assert.ok(said.includes(`--project "${fwd(sb.work)}"`), "with the project folder filled in");
       } else assert.equal(said, "", "an empty result");
       t.diagnostic(`on Claude Code ${claudeInfo().number} a skill whose command is not allowed ends the turn with no request (num_turns 0, ${said ? `the result: ${said.slice(0, 200)}` : "an empty result"})`);
