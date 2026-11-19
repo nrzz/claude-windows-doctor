@@ -4,6 +4,10 @@ All notable changes to claude-windows-doctor are written here. The format follow
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-19
+
+- The real-binary check of the skill's hand-off follows Claude Code 2.1.318: a skill whose command is not allowed still ends the turn with no request to the model and `num_turns` 0, but the result is no longer empty. It names the skill's command line and the part of it that needs approval (`Shell command permission check failed for pattern ...`). Side-by-side installs of 2.1.316 to 2.1.328 put the change at 2.1.318; the weekly run had been red on Windows since 9 November (2.1.319). The check now holds 2.1.302 to 2.1.317 to an empty result and 2.1.318 and later to that sentence, and the README records it. The tool itself is unchanged.
+
 ## [1.7.1] - 2026-10-28
 
 - `check --live`: the fake API reads each request as UTF-8 across its chunks, so a character that a chunk boundary splits in two, such as an em dash of Claude Code's system prompt, is recorded whole instead of as replacement characters. No verdict depended on it: the check reads only the tool names of the request, and finds the request by an ASCII word of its own prompt. The tests' copy of the fake API had the same fix in fe464e7.
@@ -63,6 +67,7 @@ All notable changes to claude-windows-doctor are written here. The format follow
 - What Claude Code does is what the real binary did: `test/shell-table.mjs` holds 129 cases (fake Git trees, PATH orders, spellings of the two variables, settings files, deny rules, `defaultShell`) that were put to Claude Code 2.1.295 and 2.1.299 on Windows 11 and, in CI, to the newest release (2.1.301) on `windows-latest`, and the same table is held against the prediction on a pretend Windows machine on every system. Git Bash is looked for in `CLAUDE_CODE_GIT_BASH_PATH`, then `C:\Program Files\Git` and `C:\Program Files (x86)\Git`, then two folders up from the first `git.exe` that `where.exe` prints; a variable that points at a missing file is ignored and the search goes on.
 - Zero tokens for the tool. The skill is user-only, adds nothing to a request that does not use it, and hands the model a report of at most 12 findings.
 
+[1.7.2]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.7.2
 [1.7.1]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.7.1
 [1.7.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.7.0
 [1.6.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.6.0
@@ -74,4 +79,4 @@ All notable changes to claude-windows-doctor are written here. The format follow
 [1.1.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/nrzz/claude-windows-doctor/releases/tag/v1.0.0
 
-[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/nrzz/claude-windows-doctor/compare/v1.7.2...HEAD

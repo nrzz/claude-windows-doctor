@@ -16,6 +16,8 @@ import { ROOT, tmpDir } from "./helpers.mjs";
 import { IS_WIN, claudeInfo, fakeApi, mainRequest, put, runClaude, sandbox, setVar, skip, textBlocks } from "./claude-sandbox.mjs";
 
 const fwd = (p) => p.replace(/\\/g, "/");
+/** Is the binary under test this version or newer? */
+const atLeast = (v) => { const a = claudeInfo().number.split(".").map(Number); const b = v.split(".").map(Number); for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) > b[i]; return true; };
 const withSkill = (api) => api.requests.find((r) => textBlocks(r).some((b) => b.startsWith("Base directory for this skill")));
 const SYSROOT = process.env.SystemRoot || "C:\\Windows";
 // a PATH that has Node (the skill runs `node`) and the system folders, and nothing else of this machine's
@@ -171,7 +173,7 @@ test("installed from a marketplace, the plugin's own cost projection is small an
   t.diagnostic(`claude plugin details on ${claudeInfo().number}: ${always[0].replace(/\s+/g, " ")}; per component: ${row ? row[0].trim().replace(/\s+/g, " ") : "(no row)"}`);
 });
 
-test("when the shell tool is not allowed for the command, Claude Code hands the model the command line as 'run this first' (to 2.1.301) or ends the turn with no request (2.1.302), and the skill text reads right either way (Windows, PowerShell tool)", { skip: skip() || (!IS_WIN && "this is how the PowerShell tool of a Windows setup behaves here"), timeout: 300000 }, async (t) => {
+test("when the shell tool is not allowed for the command, Claude Code hands the model the command line as 'run this first' (to 2.1.301) or ends the turn with no request (2.1.302; from 2.1.318 the result names the command), and the skill text reads right either way (Windows, PowerShell tool)", { skip: skip() || (!IS_WIN && "this is how the PowerShell tool of a Windows setup behaves here"), timeout: 300000 }, async (t) => {
   const copy = path.join(tmpDir("cwd-plug-"), "plugin");
   for (const item of ["bin", "src", "skills", ".claude-plugin", "package.json"]) fs.cpSync(path.join(ROOT, item), path.join(copy, item), { recursive: true });
   const skillFile = path.join(copy, "skills", "check", "SKILL.md");
@@ -186,10 +188,16 @@ test("when the shell tool is not allowed for the command, Claude Code hands the 
     assert.equal(r.code, 0, r.err);
     const req = withSkill(api) || mainRequest(api);
     if (!req) {
-      // 2.1.302: a skill whose command is not allowed ends the turn with no request to the model, an empty result and no turn
+      // 2.1.302: a skill whose command is not allowed ends the turn with no request to the model and no turn. To 2.1.317 the
+      // result is empty; from 2.1.318 it says why: the permission check of the skill's command failed, and which part needs approval
       assert.equal(api.requests.length, 0);
-      assert.ok(r.result && r.result.num_turns === 0 && r.result.result === "", `no request, and the result document says so: ${String(r.out).slice(0, 300)}`);
-      t.diagnostic(`on Claude Code ${claudeInfo().number} a skill whose command is not allowed ends the turn with no request (num_turns 0, an empty result)`);
+      assert.ok(r.result && r.result.num_turns === 0, `no request, and the result document says so: ${String(r.out).slice(0, 300)}`);
+      const said = String(r.result.result ?? "");
+      if (atLeast("2.1.318")) {
+        assert.match(said, /^Shell command permission check failed for pattern "!`node "[^"]+claude-windows-doctor\.mjs" check --project "[^"]+" --markdown`": .*requires approval: node "[^"]+claude-windows-doctor\.mjs" check --project "[^"]+" --markdown$/s, `the result names the skill's command: ${said.slice(0, 300)}`);
+        assert.ok(said.includes(`--project "${fwd(sb.work)}"`), "with the project folder filled in");
+      } else assert.equal(said, "", "an empty result");
+      t.diagnostic(`on Claude Code ${claudeInfo().number} a skill whose command is not allowed ends the turn with no request (num_turns 0, ${said ? `the result: ${said.slice(0, 200)}` : "an empty result"})`);
       return;
     }
     const skillText = textBlocks(req).find((b) => b.startsWith("Base directory for this skill"));
